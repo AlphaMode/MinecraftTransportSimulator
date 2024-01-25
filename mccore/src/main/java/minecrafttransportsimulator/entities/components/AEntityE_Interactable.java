@@ -13,6 +13,7 @@ import java.util.Set;
 import minecrafttransportsimulator.baseclasses.AnimationSwitchbox;
 import minecrafttransportsimulator.baseclasses.BoundingBox;
 import minecrafttransportsimulator.baseclasses.ColorRGB;
+import minecrafttransportsimulator.baseclasses.ComputedVariable;
 import minecrafttransportsimulator.baseclasses.Damage;
 import minecrafttransportsimulator.baseclasses.Point3D;
 import minecrafttransportsimulator.baseclasses.RotationMatrix;
@@ -162,7 +163,7 @@ public abstract class AEntityE_Interactable<JSONDefinition extends AJSONInteract
         super(world, placingPlayer, data);
         
         //Parse variables out now to prevent variables from activating that use them.
-        damageAmount = getVariable(DAMAGE_VARIABLE);
+        damageAmount = getVariable(DAMAGE_VARIABLE).getValue();
         outOfHealth = damageAmount == definition.general.health && definition.general.health != 0;
 
         //Load instruments.  If we are new, create the default ones.
@@ -279,7 +280,7 @@ public abstract class AEntityE_Interactable<JSONDefinition extends AJSONInteract
 
         world.beginProfiling("EntityE_Level", true);
         //Update damage and locked value
-        damageAmount = getVariable(DAMAGE_VARIABLE);
+        damageAmount = getVariable(DAMAGE_VARIABLE).getValue();
         outOfHealth = damageAmount == definition.general.health && definition.general.health != 0;
 
         world.endProfiling();
@@ -291,15 +292,15 @@ public abstract class AEntityE_Interactable<JSONDefinition extends AJSONInteract
     }
 
     @Override
-    public double getRawVariableValue(String variable, float partialTicks) {
-        if ("damage_percent".equals(variable)) {
-            return damageAmount / definition.general.health;
-        } else if ("damage_totaled".equals(variable)) {
-            return outOfHealth ? 1 : 0;
+    public ComputedVariable createComputedVariable(String variable) {
+        switch (variable) {
+            case ("damage_percent"):
+                return new ComputedVariable(this, variable, partialTicks -> damageAmount / definition.general.health, false);
+            case ("damage_totaled"):
+                return new ComputedVariable(this, variable, partialTicks -> outOfHealth ? 1 : 0, false);
+            default:
+                return super.createComputedVariable(variable);
         }
-
-        //Not a towing variable, check others.
-        return super.getRawVariableValue(variable, partialTicks);
     }
 
     /**
@@ -324,7 +325,7 @@ public abstract class AEntityE_Interactable<JSONDefinition extends AJSONInteract
                     animationsInitialized = false;
                     return;
                 }
-                if (groupDef.health == 0 || getVariable("collision_" + (i + 1) + "_damage") < groupDef.health) {
+                if (groupDef.health == 0 || getVariableValue("collision_" + (i + 1) + "_damage") < groupDef.health) {
                     AnimationSwitchbox switchBox = collisionSwitchboxes.get(groupDef);
                     if (switchBox != null) {
                         if (switchBox.runSwitchbox(0, false)) {
@@ -379,7 +380,7 @@ public abstract class AEntityE_Interactable<JSONDefinition extends AJSONInteract
      */
     public void damageCollisionBox(BoundingBox box, double damageAmount) {
         String variableName = "collision_" + (definition.collisionGroups.indexOf(box.groupDef) + 1) + "_damage";
-        double currentDamage = getVariable(variableName) + damageAmount;
+        double currentDamage = getVariableValue(variableName) + damageAmount;
         if (currentDamage > box.groupDef.health) {
             double amountActuallyNeeded = damageAmount - (currentDamage - box.groupDef.health);
             currentDamage = box.groupDef.health;
@@ -387,7 +388,7 @@ public abstract class AEntityE_Interactable<JSONDefinition extends AJSONInteract
         } else {
             InterfaceManager.packetInterface.sendToAllClients(new PacketEntityVariableIncrement(this, variableName, damageAmount));
         }
-        setVariable(variableName, currentDamage);
+        setVariableValue(variableName, currentDamage);
     }
 
     @Override
@@ -517,7 +518,7 @@ public abstract class AEntityE_Interactable<JSONDefinition extends AJSONInteract
                 } else {
                     InterfaceManager.packetInterface.sendToAllClients(new PacketEntityVariableIncrement(this, DAMAGE_VARIABLE, damage.amount));
                 }
-                setVariable(DAMAGE_VARIABLE, damageAmount);
+                setVariableValue(DAMAGE_VARIABLE, damageAmount);
             }
         }
     }

@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import minecrafttransportsimulator.baseclasses.BoundingBox;
+import minecrafttransportsimulator.baseclasses.ComputedVariable;
 import minecrafttransportsimulator.baseclasses.Damage;
 import minecrafttransportsimulator.entities.components.AEntityF_Multipart;
 import minecrafttransportsimulator.jsondefs.JSONPart.InteractableComponentType;
@@ -274,39 +275,19 @@ public final class PartInteractable extends APart {
     }
 
     @Override
-    public double getRawVariableValue(String variable, float partialTicks) {
+    public ComputedVariable createComputedVariable(String variable) {
         switch (variable) {
-            case ("interactable_count"): {
-                if (inventory != null) {
-                    return inventory.getCount();
-                } else {
-                    return 0;
-                }
-            }
-            case ("interactable_percent"): {
-                if (inventory != null) {
-                    return inventory.getCount() / (double) inventory.getSize();
-                } else if (tank != null) {
-                    return tank.getFluidLevel() / tank.getMaxLevel();
-                } else {
-                    return 0;
-                }
-            }
-            case ("interactable_capacity"): {
-                if (inventory != null) {
-                    return inventory.getSize();
-                } else if (tank != null) {
-                    return tank.getMaxLevel() / 1000;
-                } else {
-                    return 0;
-                }
-            }
-            case ("interactable_active"): {
-                return !playersInteracting.isEmpty() ? 1 : 0;
-            }
+            case ("interactable_count"):
+                return new ComputedVariable(this, variable, partialTicks -> inventory != null ? inventory.getCount() : 0, false);
+            case ("interactable_percent"):
+                return new ComputedVariable(this, variable, partialTicks -> inventory != null ? inventory.getCount() / (double) inventory.getSize() : 0, false);
+            case ("interactable_capacity"):
+                return new ComputedVariable(this, variable, partialTicks -> inventory != null ? inventory.getSize() : 0, false);
+            case ("interactable_active"):
+                return new ComputedVariable(this, variable, partialTicks -> !playersInteracting.isEmpty() ? 1 : 0, false);
+            default:
+                return super.createComputedVariable(variable);
         }
-
-        return super.getRawVariableValue(variable, partialTicks);
     }
 
     /**
