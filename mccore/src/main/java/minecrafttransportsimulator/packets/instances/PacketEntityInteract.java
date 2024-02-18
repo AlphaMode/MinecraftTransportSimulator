@@ -126,7 +126,7 @@ public class PacketEntityInteract extends APacketEntityInteract<AEntityE_Interac
 
         //Check if we clicked a box with a variable attached.
         if (!leftClick && hitBox.definition != null && hitBox.definition.variableName != null) {
-            if (vehicle != null && vehicle.locked) {
+            if (vehicle != null && vehicle.lockedVar.isActive) {
                 //Can't touch locked vehicles.
                 if (rightClick) {
                     player.sendPacket(new PacketPlayerChatMessage(player, LanguageSystem.INTERACT_VEHICLE_LOCKED));
@@ -135,11 +135,9 @@ public class PacketEntityInteract extends APacketEntityInteract<AEntityE_Interac
                 switch (hitBox.definition.variableType) {
                     case BUTTON: {
                         if (rightClick) {
-                            entity.setVariableValue(hitBox.definition.variableName, hitBox.definition.variableValue);
-                            InterfaceManager.packetInterface.sendToAllClients(new PacketEntityVariableSet(entity, hitBox.definition.variableName, hitBox.definition.variableValue));
+                            entity.getVariable(hitBox.definition.variableName).setTo(hitBox.definition.variableValue, true);
                         } else {
-                            entity.setVariableValue(hitBox.definition.variableName, 0);
-                            InterfaceManager.packetInterface.sendToAllClients(new PacketEntityVariableSet(entity, hitBox.definition.variableName, 0));
+                            entity.getVariable(hitBox.definition.variableName).setTo(0, true);
                         }
                         break;
                     }

@@ -103,7 +103,7 @@ public class GUIHUD extends AGUIBase {
         }
 
         //Set health label text and visibility.
-        healthLabel.text = String.format("Health: %.0f/%d", vehicle.definition.general.health - vehicle.damageAmount, vehicle.definition.general.health);
+        healthLabel.text = String.format("Health: %.0f/%d", vehicle.definition.general.health - vehicle.damageVar.currentValue, vehicle.definition.general.health);
         healthLabel.visible = seat.placementDefinition.isController || seat.canControlGuns;
         healthLabel.color = vehicle.outOfHealth ? ColorRGB.RED : ColorRGB.WHITE;
 

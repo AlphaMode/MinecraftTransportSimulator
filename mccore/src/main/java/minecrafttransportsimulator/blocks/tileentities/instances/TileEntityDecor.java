@@ -1,5 +1,6 @@
 package minecrafttransportsimulator.blocks.tileentities.instances;
 
+import minecrafttransportsimulator.baseclasses.ComputedVariable;
 import minecrafttransportsimulator.baseclasses.Point3D;
 import minecrafttransportsimulator.blocks.tileentities.components.ATileEntityBase;
 import minecrafttransportsimulator.jsondefs.JSONDecor;
@@ -19,9 +20,9 @@ import minecrafttransportsimulator.packets.instances.PacketEntityGUIRequest;
  * @author don_bruce
  */
 public class TileEntityDecor extends ATileEntityBase<JSONDecor> {
-
-    public static final String CLICKED_VARIABLE = "clicked";
-    public static final String ACTIVATED_VARIABLE = "activated";
+	//Variables
+	public final ComputedVariable clicked;
+	public final ComputedVariable activated;
     private float lightLevel;
 
     public TileEntityDecor(AWrapperWorld world, Point3D position, IWrapperPlayer placingPlayer, IWrapperNBT data) {
@@ -41,6 +42,9 @@ public class TileEntityDecor extends ATileEntityBase<JSONDecor> {
             boundingBox.widthRadius = definition.decor.depth / 2D;
             boundingBox.depthRadius = definition.decor.width / 2D;
         }
+        
+        this.clicked = new ComputedVariable(this, "clicked", data);
+    	this.activated = new ComputedVariable(this, "activated", data);
     }
 
     @Override
@@ -52,7 +56,9 @@ public class TileEntityDecor extends ATileEntityBase<JSONDecor> {
 
         super.update();
         //Reset clicked state.
-        setVariableValue(CLICKED_VARIABLE, 0);
+        if(clicked.isActive) {
+        	clicked.toggle(false);
+        }
     }
 
     @Override
@@ -78,14 +84,14 @@ public class TileEntityDecor extends ATileEntityBase<JSONDecor> {
             if (player.isHoldingItemType(ItemComponentType.WRENCH) && player.isSneaking()) {
                 player.sendPacket(new PacketEntityGUIRequest(this, player, PacketEntityGUIRequest.EntityGUIType.TEXT_EDITOR));
             } else {
-                getVariable(CLICKED_VARIABLE).setTo(1, true);
-                getVariable(ACTIVATED_VARIABLE).toggle(true);
+                clicked.setTo(1, true);
+                activated.toggle(true);
             }
         } else if (definition.decor.type == DecorComponentType.SEAT) {
             setRider(player, true);
         } else {
-            getVariable(CLICKED_VARIABLE).setTo(1, true);
-            getVariable(ACTIVATED_VARIABLE).toggle(true);
+            clicked.setTo(1, true);
+            activated.toggle(true);
         }
         return true;
     }

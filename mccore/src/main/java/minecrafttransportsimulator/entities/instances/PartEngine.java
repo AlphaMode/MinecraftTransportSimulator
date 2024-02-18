@@ -16,7 +16,6 @@ import minecrafttransportsimulator.mcinterface.IWrapperEntity;
 import minecrafttransportsimulator.mcinterface.IWrapperNBT;
 import minecrafttransportsimulator.mcinterface.IWrapperPlayer;
 import minecrafttransportsimulator.mcinterface.InterfaceManager;
-import minecrafttransportsimulator.packets.instances.PacketEntityVariableToggle;
 import minecrafttransportsimulator.packets.instances.PacketPartEngine;
 import minecrafttransportsimulator.packets.instances.PacketPartEngine.Signal;
 import minecrafttransportsimulator.systems.ConfigSystem;
@@ -30,16 +29,8 @@ public class PartEngine extends APart {
     public boolean backfired;
     public boolean badShift;
     public boolean running;
-    @DerivedValue
-    public boolean magnetoOn;
-    @DerivedValue
-    public boolean electricStarterEngaged;
-    @DerivedValue
-    public boolean handStarterEngaged;
     public byte forwardsGears;
     public byte reverseGears;
-    @DerivedValue
-    public byte currentGear;
     public int upshiftCountdown;
     public int downshiftCountdown;
     public int internalFuel;
@@ -116,16 +107,17 @@ public class PartEngine extends APart {
     private final Point3D engineForce = new Point3D();
     private double engineForceValue;
 
-    //Constants and static variables.
-    public static final String MAGNETO_VARIABLE = "engine_magneto";
-    public static final String ELECTRIC_STARTER_VARIABLE = "engine_starter";
-    public static final String HAND_STARTER_VARIABLE = "engine_starter_hand";
-    public static final String UP_SHIFT_VARIABLE = "engine_shift_up";
-    public static final String DOWN_SHIFT_VARIABLE = "engine_shift_down";
-    public static final String NEUTRAL_SHIFT_VARIABLE = "engine_shift_neutral";
-    public static final String GEAR_SHIFT_VARIABLE = "engine_shift_request";
-    public static final String GEAR_VARIABLE = "engine_gear";
+    //Constants and variables.
     public static final String HOURS_VARIABLE = "hours";
+    public final ComputedVariable magnetoVar;
+    public final ComputedVariable electricStarterVar;
+    public final ComputedVariable handStarterVar;
+    public final ComputedVariable currentGearVar;
+    public final ComputedVariable shiftUpVar;
+    public final ComputedVariable shiftDownVar;
+    public final ComputedVariable shiftNeutralVar;
+    public final ComputedVariable shiftSelectionVar;
+    public final ComputedVariable hoursVar;
     public static final float COLD_TEMP = 30F;
     public static final float OVERHEAT_TEMP_1 = 115.556F;
     public static final float OVERHEAT_TEMP_2 = 121.111F;
@@ -136,7 +128,6 @@ public class PartEngine extends APart {
     public PartEngine(AEntityF_Multipart<?> entityOn, IWrapperPlayer placingPlayer, JSONPartDefinition placementDefinition, IWrapperNBT data) {
         super(entityOn, placingPlayer, placementDefinition, data);
         this.running = data.getBoolean("running");
-        this.hours = data.getDouble(HOURS_VARIABLE);
         this.rpm = data.getDouble("rpm");
         this.temp = data.getDouble("temp");
         this.pressure = data.getDouble("pressure");
@@ -147,10 +138,25 @@ public class PartEngine extends APart {
                 ++forwardsGears;
             }
         }
+        this.magnetoVar = new ComputedVariable(this, "engine_magneto", data);
+        this.electricStarterVar = new ComputedVariable(this, "engine_starter", data);
+        this.handStarterVar = new ComputedVariable(this, "engine_starter_hand", data);
+        this.currentGearVar = new ComputedVariable(this, "engine_gear", data);
+        this.shiftUpVar = new ComputedVariable(this, "engine_shift_up", data);
+        this.shiftDownVar = new ComputedVariable(this, "engine_shift_down", data);
+        this.shiftNeutralVar = new ComputedVariable(this, "engine_shift_neutral", data);
+        this.shiftSelectionVar = new ComputedVariable(this, "engine_shift_request", data);
+        this.hoursVar = new ComputedVariable(this, HOURS_VARIABLE, data);
 
         //Verify gears aren't out of range.  This can happen if a pack updates to lower number of gears.
-        if (definition.engine.gearRatios.size() <= getVariableValue(GEAR_VARIABLE) + reverseGears) {
-            setVariableValue(GEAR_VARIABLE, currentGear + reverseGears - 1);
+        if (definition.engine.gearRatios.size() <= currentGearVar.currentValue + reverseGears) {
+        	currentGearVar.setTo(forwardsGears + reverseGears - 1, false);
+        }
+
+        //If we are on an aircraft, set our gear to 1 as aircraft don't have shifters.
+        //Well, except blimps, but that's a special case.
+        if (vehicleOn != null && vehicleOn.definition.motorized.isAircraft) {
+        	currentGearVar.setTo(1, false);
         }
 
         //Verify the vehicle has the right fuel for us.  If not, clear it out.
@@ -178,12 +184,6 @@ public class PartEngine extends APart {
                 }
             }
         }
-
-        //If we are on an aircraft, set our gear to 1 as aircraft don't have shifters.
-        //Well, except blimps, but that's a special case.
-        if (vehicleOn != null && vehicleOn.definition.motorized.isAircraft) {
-            setVariableValue(GEAR_VARIABLE, 1);
-        }
         this.rocketFuelUsed = data.getDouble("rocketFuelUsed");
     }
 
@@ -196,10 +196,6 @@ public class PartEngine extends APart {
                 if (damage.entityResponsible instanceof IWrapperPlayer && ((IWrapperPlayer) damage.entityResponsible).getHeldStack().isEmpty()) {
                     //Don't hand-start engines from seated players.  Lazy bums...
                     if (!masterEntity.allParts.contains(damage.entityResponsible.getEntityRiding())) {
-                        if (!magnetoOn) {
-                            setVariableValue(MAGNETO_VARIABLE, 1);
-                            InterfaceManager.packetInterface.sendToAllClients(new PacketEntityVariableToggle(this, MAGNETO_VARIABLE));
-                        }
                         handStartEngine();
                         InterfaceManager.packetInterface.sendToAllClients(new PacketPartEngine(this, Signal.HS_ON));
                         return;
@@ -226,13 +222,9 @@ public class PartEngine extends APart {
         //Reset states.
         backfired = false;
         badShift = false;
-        magnetoOn = getVariable(MAGNETO_VARIABLE).isActive();
-        electricStarterEngaged = getVariable(ELECTRIC_STARTER_VARIABLE).isActive();
-        handStarterEngaged = getVariable(HAND_STARTER_VARIABLE).isActive();
-        currentGear = (byte) getVariable(GEAR_VARIABLE).getValue();
 
         //If the engine is running, but the magneto is off, turn the engine off.
-        if (running && !magnetoOn) {
+        if (running && !magnetoVar.isActive) {
             running = false;
             if (definition.engine.type == JSONPart.EngineType.NORMAL) {
                 internalFuel = 200;
@@ -284,13 +276,12 @@ public class PartEngine extends APart {
             temp -= (temp - ambientTemp) * coolingFactor;
 
             //Check to see if electric or hand starter can keep running.
-            if (electricStarterEngaged) {
+            if (electricStarterVar.isActive) {
                 if (starterLevel == 0) {
                     if (vehicleOn.electricPower > 1) {
                         starterLevel += 4;
                     } else if (!world.isClient()) {
-                        setVariableValue(ELECTRIC_STARTER_VARIABLE, 0);
-                        InterfaceManager.packetInterface.sendToAllClients(new PacketEntityVariableToggle(this, ELECTRIC_STARTER_VARIABLE));
+                    	electricStarterVar.toggle(true);
                     }
                 }
                 if (starterLevel > 0) {
@@ -303,13 +294,12 @@ public class PartEngine extends APart {
                 }
                 if (autoStarterEngaged) {
                     if (!world.isClient() && running) {
-                        setVariableValue(ELECTRIC_STARTER_VARIABLE, 0);
-                        InterfaceManager.packetInterface.sendToAllClients(new PacketEntityVariableToggle(this, ELECTRIC_STARTER_VARIABLE));
+                    	electricStarterVar.setTo(0, true);
                     }
                 }
-            } else if (handStarterEngaged) {
+            } else if (handStarterVar.isActive) {
                 if (starterLevel == 0) {
-                    setVariableValue(HAND_STARTER_VARIABLE, 0);
+                	handStarterVar.setTo(0, false);
                 }
             } else {
                 starterLevel = 0;
@@ -333,31 +323,26 @@ public class PartEngine extends APart {
 
             //Check for any shifting requests.
             if (!world.isClient()) {
-                ComputedVariable variable = getVariable(NEUTRAL_SHIFT_VARIABLE);
-                if (variable.isActive()) {
-                    variable.toggle(false);
+                if (shiftNeutralVar.isActive) {
+                	shiftNeutralVar.toggle(false);
                     shiftNeutral();
                 }
-                variable = getVariable(UP_SHIFT_VARIABLE);
-                if (variable.isActive()) {
-                    variable.toggle(false);
+                if (shiftUpVar.isActive) {
+                	shiftUpVar.toggle(false);
                     shiftUp();
                 }else {
-                	variable = getVariable(DOWN_SHIFT_VARIABLE);
-                	if (variable.isActive()) {
-                        variable.toggle(false);
+                	if (shiftDownVar.isActive) {
+                		shiftDownVar.toggle(false);
                         shiftDown();
                     }else {
-                    	variable = getVariable(GEAR_SHIFT_VARIABLE);
-                    	double shiftValue = variable.getValue();
-                    	if (shiftValue < 10) {
-                            while (currentGear < shiftValue && shiftUp())
+                    	if (shiftSelectionVar.currentValue < 10) {
+                            while (currentGearVar.currentValue < shiftSelectionVar.currentValue && shiftUp())
                                 ;
-                        } else if (shiftValue == 10) {
-                            if (currentGear == 0) {
+                        } else if (shiftSelectionVar.currentValue == 10) {
+                            if (currentGearVar.currentValue == 0) {
                                 shiftDown();
                             }
-                        } else if (shiftValue == 11) {
+                        } else if (shiftSelectionVar.currentValue == 11) {
                             shiftNeutral();
                         }
                     }
@@ -366,10 +351,10 @@ public class PartEngine extends APart {
 
             //Check for reversing if we are on a blimp with reversed thrust.
             if (vehicleOn.definition.motorized.isBlimp && !linkedPropellers.isEmpty()) {
-                if (vehicleOn.reverseThrust && currentGear > 0) {
-                    currentGear = -1;
-                } else if (!vehicleOn.reverseThrust && currentGear < 0) {
-                    currentGear = 1;
+                if (vehicleOn.reverseThrustVar.isActive && currentGearVar.currentValue > 0) {
+                	currentGearVar.setTo(-1, false);
+                } else if (!vehicleOn.reverseThrustVar.isActive && currentGearVar.currentValue < 0) {
+                    currentGearVar.setTo(1, false);
                 }
             }
 
@@ -405,22 +390,22 @@ public class PartEngine extends APart {
                 }
 
                 //Do automatic transmission functions if needed.
-                if (currentIsAutomatic != 0 && !world.isClient() && currentGear != 0) {
+                if (currentIsAutomatic != 0 && !world.isClient() && currentGearVar.currentValue != 0) {
                     if (shiftCooldown == 0) {
-                        if (currentGear > 0 ? currentGear < forwardsGears : -currentGear < reverseGears) {
+                        if (currentGearVar.currentValue > 0 ? currentGearVar.currentValue < forwardsGears : -currentGearVar.currentValue < reverseGears) {
                             //Can shift up, try to do so.
-                            if (rpm > (definition.engine.upShiftRPM != null ? definition.engine.upShiftRPM.get(currentGear + reverseGears) : (currentMaxSafeRPM * 0.9)) * 0.5F * (1.0F + vehicleOn.throttle)) {
-                                if (currentGear > 0) {
+                            if (rpm > (definition.engine.upShiftRPM != null ? definition.engine.upShiftRPM.get((int) (currentGearVar.currentValue + reverseGears)) : (currentMaxSafeRPM * 0.9)) * 0.5F * (1.0F + vehicleOn.throttleVar.currentValue)) {
+                                if (currentGearVar.currentValue > 0) {
                                     shiftUp();
                                 } else {
                                     shiftDown();
                                 }
                             }
                         }
-                        if (currentGear > 1 || currentGear < -1) {
+                        if (currentGearVar.currentValue > 1 || currentGearVar.currentValue < -1) {
                             //Can shift down, try to do so.
-                            if (rpm < (definition.engine.downShiftRPM != null ? definition.engine.downShiftRPM.get(currentGear + reverseGears) * 0.5 * (1.0F + vehicleOn.throttle) : (currentMaxSafeRPM * 0.9) * 0.25 * (1.0F + vehicleOn.throttle))) {
-                                if (currentGear > 0) {
+                            if (rpm < (definition.engine.downShiftRPM != null ? definition.engine.downShiftRPM.get((int) (currentGearVar.currentValue + reverseGears)) * 0.5 * (1.0F + vehicleOn.throttleVar.currentValue) : (currentMaxSafeRPM * 0.9) * 0.25 * (1.0F + vehicleOn.throttleVar.currentValue))) {
+                                if (currentGearVar.currentValue > 0) {
                                     shiftDown();
                                 } else {
                                     shiftUp();
@@ -500,7 +485,7 @@ public class PartEngine extends APart {
                         //have the ability to engage a starter.
                         if (rpm >= currentStartRPM && !world.isClient() && !vehicleOn.outOfHealth) {
                             if (vehicleOn.isCreative || ConfigSystem.settings.general.fuelUsageFactor.value == 0 || vehicleOn.fuelTank.getFluidLevel() > 0) {
-                                if (!isInLiquid() && magnetoOn) {
+                                if (!isInLiquid() && magnetoVar.isActive) {
                                     startEngine();
                                     InterfaceManager.packetInterface.sendToAllClients(new PacketPartEngine(this, Signal.START));
                                 }
@@ -519,7 +504,7 @@ public class PartEngine extends APart {
                         }
                     } else {
                         //If the magneto comes on, and we have fuel, ignite.
-                        if (magnetoOn && rocketFuelUsed < definition.engine.rocketFuel) {
+                        if (magnetoVar.isActive && rocketFuelUsed < definition.engine.rocketFuel) {
                             running = true;
                         }
                     }
@@ -547,7 +532,7 @@ public class PartEngine extends APart {
                         //Turn on engine if the magneto is on and we have fuel.
                         if (!world.isClient() && !vehicleOn.outOfHealth) {
                             if (isActive && (vehicleOn.isCreative || ConfigSystem.settings.general.fuelUsageFactor.value == 0 || vehicleOn.fuelTank.getFluidLevel() > 0)) {
-                                if (magnetoOn) {
+                                if (magnetoVar.isActive) {
                                     startEngine();
                                     InterfaceManager.packetInterface.sendToAllClients(new PacketPartEngine(this, Signal.START));
                                 }
@@ -565,7 +550,7 @@ public class PartEngine extends APart {
                         //Turn on engine if the magneto is onl.
                         if (!world.isClient() && !vehicleOn.outOfHealth) {
                             if (isActive) {
-                                if (magnetoOn) {
+                                if (magnetoVar.isActive){
                                     startEngine();
                                     InterfaceManager.packetInterface.sendToAllClients(new PacketPartEngine(this, Signal.START));
                                 }
@@ -584,7 +569,7 @@ public class PartEngine extends APart {
                 lowestWheelVelocity = 999F;
                 desiredWheelVelocity = -999F;
                 wheelFriction = 0;
-                engineTargetRPM = !electricStarterEngaged ? vehicleOn.throttle * (currentMaxRPM - currentIdleRPM) / (1 + hours / 1500) + currentIdleRPM : currentStartRPM;
+                engineTargetRPM = !electricStarterVar.isActive ? vehicleOn.throttleVar.currentValue * (currentMaxRPM - currentIdleRPM) / (1 + hours / 1500) + currentIdleRPM : currentStartRPM;
 
                 //Update wheel friction and velocity.
                 for (PartGroundDevice wheel : drivenWheels) {
@@ -628,7 +613,7 @@ public class PartEngine extends APart {
                     double propellerFeedback = -Math.abs(attachedPropeller.airstreamLinearVelocity - attachedPropeller.desiredLinearVelocity) * (isPropellerInLiquid ? 6.5 : 2);
                     if (running) {
                         propellerFeedback -= propellerForcePenalty * 50;
-                        engineTargetRPM = vehicleOn.throttle * (currentMaxRPM - currentIdleRPM) / (1 + hours / 1500) + currentIdleRPM;
+                        engineTargetRPM = vehicleOn.throttleVar.currentValue * (currentMaxRPM - currentIdleRPM) / (1 + hours / 1500) + currentIdleRPM;
                         double engineRPMDifference = engineTargetRPM - rpm;
 
                         //propellerFeedback can't make an engine stall, but hours can.
@@ -637,7 +622,7 @@ public class PartEngine extends APart {
                         } else {
                             rpm += engineRPMDifference / currentRevResistance + propellerFeedback;
                         }
-                    } else if (!electricStarterEngaged && !handStarterEngaged) {
+                    } else if (!electricStarterVar.isActive && !handStarterVar.isActive) {
                         rpm += (propellerFeedback - 1) * Math.abs(propellerGearboxRatio);
 
                         //Don't let the engine RPM go negative.  This results in physics errors.
@@ -655,7 +640,7 @@ public class PartEngine extends APart {
                     if (rocketFuelUsed < definition.engine.rocketFuel) {
                         engineTargetRPM = currentMaxRPM;
                     } else {
-                        engineTargetRPM = vehicleOn.throttle * (currentMaxRPM - currentIdleRPM) / (1 + hours / 1500) + currentIdleRPM;
+                        engineTargetRPM = vehicleOn.throttleVar.currentValue * (currentMaxRPM - currentIdleRPM) / (1 + hours / 1500) + currentIdleRPM;
                     }
                     rpm += (engineTargetRPM - rpm) / (currentRevResistance * 3);
                     if (currentRevlimitRPM == -1) {
@@ -667,7 +652,7 @@ public class PartEngine extends APart {
                             rpm -= Math.abs(engineTargetRPM - rpm) / currentRevlimitBounce;
                         }
                     }
-                } else if (!electricStarterEngaged && !handStarterEngaged) {
+                } else if (!electricStarterVar.isActive && !handStarterVar.isActive) {
                     rpm = Math.max(rpm - currentWinddownRate, 0); //engineWinddownRate tells us how quickly to slow down the engine, 10 rpm a tick by default
                 }
             }
@@ -774,7 +759,7 @@ public class PartEngine extends APart {
         currentCoolingCoefficient = definition.engine.coolingCoefficient;
         currentSuperchargerFuelConsumption = definition.engine.superchargerFuelConsumption;
         currentSuperchargerEfficiency = definition.engine.superchargerEfficiency;
-        currentGearRatio = definition.engine.gearRatios.get(currentGear + reverseGears);
+        currentGearRatio = definition.engine.gearRatios.get((int)currentGearVar.currentValue + reverseGears);
         currentForceShift = definition.engine.forceShift ? 1 : 0;
         currentIsAutomatic = definition.engine.isAutomatic ? 1 : 0;
         currentWearFactor = definition.engine.engineWearFactor;
@@ -925,7 +910,7 @@ public class PartEngine extends APart {
             case ("engine_pressure"):
                 return new ComputedVariable(this, variable, partialTicks -> pressure, false);
             case ("engine_gear"):
-                return new ComputedVariable(this, variable, partialTicks -> currentGear, false);
+                return new ComputedVariable(this, variable, partialTicks -> currentGearVar.currentValue, false);
             case ("engine_gearshift"):
                 return new ComputedVariable(this, variable, partialTicks -> getGearshiftRotation(), false);
             case ("engine_gearshift_hvertical"):
@@ -939,7 +924,7 @@ public class PartEngine extends APart {
             case ("engine_badshift"):
                 return new ComputedVariable(this, variable, partialTicks -> badShift ? 1 : 0, false);
             case ("engine_reversed"):
-                return new ComputedVariable(this, variable, partialTicks -> currentGear < 0 ? 1 : 0, false);
+                return new ComputedVariable(this, variable, partialTicks -> currentGearVar.currentValue < 0 ? 1 : 0, false);
             case ("engine_running"):
                 return new ComputedVariable(this, variable, partialTicks -> running ? 1 : 0, false);
             case ("engine_powered"):
@@ -1020,7 +1005,8 @@ public class PartEngine extends APart {
     }
 
     public void handStartEngine() {
-        setVariableValue(HAND_STARTER_VARIABLE, 1);
+    	magnetoVar.setTo(1, false);
+    	handStarterVar.setTo(1, false);
 
         //Add a small amount to the starter level from the player's hand.
         starterLevel += 4;
@@ -1029,10 +1015,10 @@ public class PartEngine extends APart {
     public void autoStartEngine() {
         //Only engage auto-starter if we aren't running and we have the right fuel.
         if (!running && (vehicleOn.isCreative || ConfigSystem.settings.general.fuelUsageFactor.value == 0 || vehicleOn.fuelTank.getFluidLevel() > 0)) {
-            setVariableValue(MAGNETO_VARIABLE, 1);
+        	magnetoVar.setTo(1, false);
             if (definition.engine.type == JSONPart.EngineType.NORMAL) {
                 autoStarterEngaged = true;
-                setVariableValue(ELECTRIC_STARTER_VARIABLE, 1);
+                electricStarterVar.setTo(1, false);
             }
         }
     }
@@ -1071,33 +1057,33 @@ public class PartEngine extends APart {
 
     //--------------------START OF ENGINE GEAR METHODS--------------------
 
-    public float getGearshiftRotation() {
-        return currentIsAutomatic != 0 ? Math.min(1, currentGear) * 15F : currentGear * 5;
+    public double getGearshiftRotation() {
+        return currentIsAutomatic != 0 ? Math.min(1, currentGearVar.currentValue) * 15F : currentGearVar.currentValue * 5;
     }
 
     public float getGearshiftPosition_Vertical() {
-        if (currentGear < 0) {
+        if (currentGearVar.currentValue < 0) {
             return definition.engine.gearRatios.size() % 2 == 0 ? 15 : -15;
-        } else if (currentGear == 0) {
+        } else if (currentGearVar.currentValue == 0) {
             return 0;
         } else {
-            return currentGear % 2 == 0 ? -15 : 15;
+            return currentGearVar.currentValue % 2 == 0 ? -15 : 15;
         }
     }
 
-    public float getGearshiftPosition_Horizontal() {
+    public double getGearshiftPosition_Horizontal() {
         int columns = (definition.engine.gearRatios.size()) / 2;
         int firstColumnAngle = columns / 2 * -5;
         float columnAngleDelta = columns != 1 ? -firstColumnAngle * 2 / (columns - 1) : 0;
-        if (currentGear < 0) {
+        if (currentGearVar.currentValue < 0) {
             return -firstColumnAngle;
-        } else if (currentGear == 0) {
+        } else if (currentGearVar.currentValue == 0) {
             return 0;
         } else {
             //Divide the currentGear-1 by two to get our column (0 for column 1, 1 for 2).
             //Then add multiply that by columnAngleDelta to get our delta for this column.
             //Return that value, plus the initial angle.
-            return firstColumnAngle + (currentGear - 1) / 2 * columnAngleDelta;
+            return firstColumnAngle + (currentGearVar.currentValue - 1) / 2 * columnAngleDelta;
         }
     }
 
@@ -1106,21 +1092,20 @@ public class PartEngine extends APart {
         boolean doShift = false;
         if (definition.engine.jetPowerFactor == 0) {
             //Check to make sure we can shift.
-            if (currentGear == forwardsGears) {
+            if (currentGearVar.currentValue == forwardsGears) {
                 //Already at highest gear, don't process things.
                 return false;
-            } else if (currentGear == 0) {
+            } else if (currentGearVar.currentValue == 0) {
                 //Neutral to 1st.
                 nextGear = 1;
                 doShift = world.isClient() || vehicleOn.axialVelocity < MAX_SHIFT_SPEED || wheelFriction == 0 || !vehicleOn.goingInReverse || currentForceShift != 0;
             } else {//Gear to next gear.
-                nextGear = (byte) (currentGear + 1);
+                nextGear = (byte) (currentGearVar.currentValue + 1);
                 doShift = true;
             }
 
             if (doShift) {
-                currentGear = nextGear;
-                setVariableValue(GEAR_VARIABLE, currentGear);
+                currentGearVar.setTo(nextGear, false);
                 shiftCooldown = definition.engine.shiftSpeed;
                 upshiftCountdown = definition.engine.clutchTime;
                 if (!world.isClient()) {
@@ -1138,21 +1123,20 @@ public class PartEngine extends APart {
         boolean doShift = false;
         if (definition.engine.jetPowerFactor == 0) {
             //Check to make sure we can shift.
-            if (currentGear < 0 && -currentGear == reverseGears) {
+            if (currentGearVar.currentValue < 0 && -currentGearVar.currentValue == reverseGears) {
                 //Already at lowest gear.
                 return false;
-            } else if (currentGear == 0) {
+            } else if (currentGearVar.currentValue == 0) {
                 //Neutral to 1st reverse.
                 nextGear = -1;
                 doShift = world.isClient() || vehicleOn.axialVelocity < MAX_SHIFT_SPEED || wheelFriction == 0 || vehicleOn.goingInReverse || currentForceShift != 0;
             } else {//Gear to next gear.
-                nextGear = (byte) (currentGear - 1);
+                nextGear = (byte) (currentGearVar.currentValue - 1);
                 doShift = true;
             }
 
             if (doShift) {
-                currentGear = nextGear;
-                setVariableValue(GEAR_VARIABLE, currentGear);
+                currentGearVar.setTo(nextGear, false);
                 shiftCooldown = definition.engine.shiftSpeed;
                 downshiftCountdown = definition.engine.clutchTime;
                 if (!world.isClient()) {
@@ -1167,15 +1151,14 @@ public class PartEngine extends APart {
 
     public void shiftNeutral() {
         if (definition.engine.jetPowerFactor == 0) {
-            if (currentGear != 0) {//Any gear to neutral.
-                if (currentGear > 0) {
+            if (currentGearVar.currentValue != 0) {//Any gear to neutral.
+                if (currentGearVar.currentValue > 0) {
                     downshiftCountdown = definition.engine.clutchTime;
                 } else {
                     upshiftCountdown = definition.engine.clutchTime;
                 }
                 shiftCooldown = definition.engine.shiftSpeed;
-                currentGear = 0;
-                setVariableValue(GEAR_VARIABLE, currentGear);
+                currentGearVar.setTo(0, false);
                 if (!world.isClient()) {
                     InterfaceManager.packetInterface.sendToAllClients(new PacketPartEngine(this, Signal.SHIFT_NEUTRAL));
                 }
@@ -1211,9 +1194,9 @@ public class PartEngine extends APart {
         if (definition.engine.jetPowerFactor == 0 && wheelFriction != 0) {
             double wheelForce;
             //If running, use the friction of the wheels to determine the new speed.
-            if (running || electricStarterEngaged) {
+            if (running || electricStarterVar.isActive) {
                 if (rpm > currentRevlimitRPM && currentRevlimitRPM != -1) {
-                    wheelForce = -rpm / currentMaxRPM * Math.signum(currentGear) * 60;
+                    wheelForce = -rpm / currentMaxRPM * Math.signum(currentGearVar.currentValue) * 60;
                 } else {
                     wheelForce = (engineTargetRPM - rpm) / currentMaxRPM * currentGearRatio * vehicleOn.currentAxleRatio * (currentFuelConsumption + (currentSuperchargerFuelConsumption * currentSuperchargerEfficiency)) * 0.6F * 30F;
                 }
@@ -1254,7 +1237,7 @@ public class PartEngine extends APart {
                 }
             } else {
                 //Not running, do engine braking.
-                wheelForce = -rpm / currentMaxRPM * Math.signum(currentGear) * 30;
+                wheelForce = -rpm / currentMaxRPM * Math.signum(currentGearVar.currentValue) * 30;
             }
             engineForceValue += wheelForce;
             engineForce.set(0, 0, wheelForce).rotate(vehicleOn.orientation);
@@ -1277,7 +1260,7 @@ public class PartEngine extends APart {
             //In this case, however, we don't care about the fuelConsumption as that's only used by the core.
             double fanVelocityFactor = (0.0254 * 250 * rpm / 60 / 20 - engineAxialVelocity) / 200D;
             double fanContribution = 10 * vehicleOn.airDensity * safeRPMFactor * fanVelocityFactor * definition.engine.bypassRatio;
-            double thrust = (vehicleOn.reverseThrust ? -(coreContribution + fanContribution) : coreContribution + fanContribution) * definition.engine.jetPowerFactor;
+            double thrust = (vehicleOn.reverseThrustVar.isActive ? -(coreContribution + fanContribution) : coreContribution + fanContribution) * definition.engine.jetPowerFactor;
 
             //Add the jet force to the engine.  Use the engine rotation to define the power vector.
             engineForceValue += thrust;
@@ -1293,7 +1276,6 @@ public class PartEngine extends APart {
     public IWrapperNBT save(IWrapperNBT data) {
         super.save(data);
         data.setBoolean("running", running);
-        data.setDouble(HOURS_VARIABLE, hours);
         data.setDouble("rpm", rpm);
         data.setDouble("temp", temp);
         data.setDouble("pressure", pressure);

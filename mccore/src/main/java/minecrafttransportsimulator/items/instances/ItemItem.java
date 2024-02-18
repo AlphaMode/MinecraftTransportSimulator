@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.UUID;
 
 import minecrafttransportsimulator.baseclasses.BoundingBox;
-import minecrafttransportsimulator.baseclasses.ComputedVariable;
 import minecrafttransportsimulator.baseclasses.Point3D;
 import minecrafttransportsimulator.blocks.components.ABlockBase.Axis;
 import minecrafttransportsimulator.blocks.tileentities.components.ATileEntityBase;
@@ -30,7 +29,6 @@ import minecrafttransportsimulator.mcinterface.IWrapperNBT;
 import minecrafttransportsimulator.mcinterface.IWrapperPlayer;
 import minecrafttransportsimulator.mcinterface.InterfaceManager;
 import minecrafttransportsimulator.packets.instances.PacketEntityGUIRequest;
-import minecrafttransportsimulator.packets.instances.PacketEntityVariableSet;
 import minecrafttransportsimulator.packets.instances.PacketGUIRequest;
 import minecrafttransportsimulator.packets.instances.PacketPartEngine;
 import minecrafttransportsimulator.packets.instances.PacketPartInteractable;
@@ -224,12 +222,12 @@ public class ItemItem extends AItemPack<JSONItem> implements IItemEntityInteract
                                 //Entity clicked is a seat, don't do locking changes, instead, change seat.
                                 //Returning skip will make the seat-clicking code activate in the packet.
                                 return CallbackType.SKIP;
-                            } else if (vehicle.locked) {
+                            } else if (vehicle.lockedVar.isActive) {
                                 //Unlock entity and process hitbox action if it's a closed door.
                                 vehicle.toggleLock();
                                 player.sendPacket(new PacketPlayerChatMessage(player, LanguageSystem.INTERACT_KEY_UNLOCK));
                                 if (hitBox.definition != null) {
-                                    if (hitBox.definition.variableName != null && !entity.getVariable(hitBox.definition.variableName).isActive() && hitBox.definition.variableName.startsWith("door")) {
+                                    if (hitBox.definition.variableName != null && !entity.getVariable(hitBox.definition.variableName).isActive && hitBox.definition.variableName.startsWith("door")) {
                                         return CallbackType.SKIP;
                                     }
                                 }
@@ -239,7 +237,7 @@ public class ItemItem extends AItemPack<JSONItem> implements IItemEntityInteract
                                 vehicle.toggleLock();
                                 player.sendPacket(new PacketPlayerChatMessage(player, LanguageSystem.INTERACT_KEY_LOCK));
                                 if (hitBox.definition != null) {
-                                    if (hitBox.definition.variableName != null && entity.getVariable(hitBox.definition.variableName).isActive() && !hitBox.definition.variableName.startsWith("door")) {
+                                    if (hitBox.definition.variableName != null && entity.getVariable(hitBox.definition.variableName).isActive && !hitBox.definition.variableName.startsWith("door")) {
                                         return CallbackType.SKIP;
                                     }
                                 }
@@ -394,18 +392,17 @@ public class ItemItem extends AItemPack<JSONItem> implements IItemEntityInteract
                         EntityVehicleF_Physics vehicle = (EntityVehicleF_Physics) entity;
                         if (vehicle.repairCooldownTicks == 0) {
                             if (!vehicle.outOfHealth || definition.repair.canRepairTotaled) {
-                                if (entity.damageAmount == 0) {
+                                if (entity.damageVar.currentValue == 0) {
                                     InterfaceManager.packetInterface.sendToPlayer(new PacketPlayerChatMessage(player, LanguageSystem.INTERACT_REPAIR_NONEED), player);
                                     return CallbackType.NONE;
                                 } else {
                                     double amountRepaired = definition.repair.amount;
-                                    if (vehicle.damageAmount < amountRepaired) {
-                                        amountRepaired = vehicle.damageAmount;
+                                    if (vehicle.damageVar.currentValue < amountRepaired) {
+                                        amountRepaired = vehicle.damageVar.currentValue;
                                     }
-                                    double newDamage = vehicle.damageAmount - amountRepaired;
-                                    vehicle.setVariableValue(AEntityE_Interactable.DAMAGE_VARIABLE, newDamage);
+                                    double newDamage = vehicle.damageVar.currentValue - amountRepaired;
+                                    vehicle.damageVar.setTo(newDamage, true);
                                     vehicle.repairCooldownTicks = 200;
-                                    InterfaceManager.packetInterface.sendToAllClients(new PacketEntityVariableSet(vehicle, AEntityE_Interactable.DAMAGE_VARIABLE, newDamage));
                                     InterfaceManager.packetInterface.sendToPlayer(new PacketPlayerChatMessage(player, LanguageSystem.INTERACT_REPAIR_PASS, new Object[] { amountRepaired, entity.definition.general.health - newDamage, entity.definition.general.health }), player);
                                     if (!player.isCreative()) {
                                         player.getInventory().removeFromSlot(player.getHotbarIndex(), 1);
@@ -457,18 +454,9 @@ public class ItemItem extends AItemPack<JSONItem> implements IItemEntityInteract
         } else if (definition.item.type.equals(ItemComponentType.Y2K_BUTTON)) {
             if (!world.isClient() && player.isOP()) {
                 for (EntityVehicleF_Physics vehicle : world.getEntitiesOfType(EntityVehicleF_Physics.class)) {
-                    vehicle.setVariableValue(EntityVehicleF_Physics.THROTTLE_VARIABLE, 0);
-                    InterfaceManager.packetInterface.sendToAllClients(new PacketEntityVariableSet(vehicle, EntityVehicleF_Physics.THROTTLE_VARIABLE, 0));
-                    ComputedVariable variable = vehicle.getVariable(EntityVehicleF_Physics.PARKINGBRAKE_VARIABLE);
-                    if (!variable.isActive()) {
-                        variable.toggle(true);
-                    }
-                    vehicle.engines.forEach(engine -> {
-                        ComputedVariable variable2 = engine.getVariable(PartEngine.MAGNETO_VARIABLE);
-                        if (!variable2.isActive()) {
-                            variable2.toggle(true);
-                        }
-                    });
+                    vehicle.throttleVar.setTo(0, true);
+                    vehicle.parkingBrakeVar.setTo(0, true);
+                    vehicle.engines.forEach(engine -> engine.magnetoVar.setTo(0, true));
                 }
             }
         }

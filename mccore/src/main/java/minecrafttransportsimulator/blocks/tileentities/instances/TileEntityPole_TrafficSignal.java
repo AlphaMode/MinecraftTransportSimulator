@@ -27,12 +27,12 @@ public class TileEntityPole_TrafficSignal extends ATileEntityPole_Component {
         if (linkedController != null) {
             //Remove all old lights, then add our new one.
             for (LightType light : LightType.values()) {
-                setVariableValue(light.lowercaseName, 0);
+                getVariable(light.lowercaseName).setTo(0, false);
             }
             if (linkedController.isValid && linkedController.controlledSignals.contains(this)) {
                 for (SignalGroup group : linkedController.signalGroups.get(axis)) {
                     if (group.currentLight.lowercaseName != null) {
-                        setVariableValue(group.currentLight.lowercaseName, 1);
+                        getVariable(group.currentLight.lowercaseName).setTo(1,  false);
                     }
                 }
             } else {

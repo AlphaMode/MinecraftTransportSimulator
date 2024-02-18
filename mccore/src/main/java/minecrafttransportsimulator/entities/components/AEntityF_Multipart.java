@@ -267,7 +267,7 @@ public abstract class AEntityF_Multipart<JSONDefinition extends AJSONPartProvide
                 JSONPartDefinition partDef = definition.parts.get(i);
                 if (partDef.transferVariable != null) {
                     ComputedVariable variable = getVariable(partDef.transferVariable);
-                    if (variable.isActive()) {
+                    if (variable.isActive) {
                         transferPart(partDef);
                         variable.toggle(true);
                     }
@@ -500,7 +500,7 @@ public abstract class AEntityF_Multipart<JSONDefinition extends AJSONPartProvide
                     boolean applyDamage = ((hitBox.groupDef != null && (hitBox.groupDef.health == 0 || damage.isWater)) || hitPart != null);
                     boolean removeAfterDamage = applyDamage && (hitPart == null || hitPart.definition.generic.forwardsDamageMultiplier > 0);
 
-                    bullet.displayDebugMessage("HIT ENTITY BOX FOR DAMAGE: " + (int) damage.amount + " DAMAGE WAS AT " + (int) hitEntity.damageAmount);
+                    bullet.displayDebugMessage("HIT ENTITY BOX FOR DAMAGE: " + (int) damage.amount + " DAMAGE WAS AT " + (int) hitEntity.damageVar.currentValue);
                     if (world.isClient()) {
                         InterfaceManager.packetInterface.sendToServer(new PacketEntityBulletHitEntity(bullet.gun, hitEntity, damage));
                         if (removeAfterDamage) {
@@ -688,14 +688,14 @@ public abstract class AEntityF_Multipart<JSONDefinition extends AJSONPartProvide
                     //Add constants. This is also done in initializeAnimations, but repeating it here ensures 
                     //the value will be set before spawning in any conditional parts.
                     if (definition.constantValues != null) {
-                        definition.constantValues.forEach((constantKey, constantValue) -> setVariableValue(constantKey, constantValue));
+                        definition.constantValues.forEach((constantKey, constantValue) -> getVariable(constantKey).setTo(constantValue, false));
                     }
                     //Add default parts.  We need to do this after we actually create this part so its slots are valid.
                     //We also need to know if it is a new part or not, since that allows non-permanent default parts to be added.
                     JSONPartDefinition partDef = definition.parts.get(i);
                     if (partDef.conditionalDefaultParts != null) {
                         for (Entry<String, String> conditionalDef : partDef.conditionalDefaultParts.entrySet()) {
-                            if (getVariable(conditionalDef.getKey()).isActive()) {
+                            if (getVariable(conditionalDef.getKey()).isActive) {
                                 addDefaultPart(conditionalDef.getValue(), i, placingPlayer, definition);
                                 break;
                             }

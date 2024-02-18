@@ -264,10 +264,10 @@ public abstract class AEntityD_Definable<JSONDefinition extends AJSONMultiModelP
             if (testSubDef.subName.equals(newSubDefName)) {
                 //Remove existing constants, if we have them, then add them, if we have them.
                 if (subDefinition != null && subDefinition.constants != null) {
-                    subDefinition.constants.forEach(constant -> setVariableValue(constant, 0D));
+                    testSubDef.constants.forEach(constant -> getVariable(constant).setTo(0,  false));
                 }
                 if (testSubDef.constants != null) {
-                    testSubDef.constants.forEach(constant -> setVariableValue(constant, 1D));
+                    testSubDef.constants.forEach(constant -> getVariable(constant).setTo(1,  false));
                 }
                 subDefinition = testSubDef;
                 cachedItem = PackParser.getItem(definition.packID, definition.systemName, subDefinition.subName);
@@ -381,7 +381,7 @@ public abstract class AEntityD_Definable<JSONDefinition extends AJSONMultiModelP
 
         //Add constants.
         if (definition.constantValues != null) {
-            definition.constantValues.forEach((constantKey, constantValue) -> setVariableValue(constantKey, constantValue));
+            definition.constantValues.forEach((constantKey, constantValue) -> getVariable(constantKey).setTo(constantValue, false));
         }
     }
 
@@ -890,7 +890,7 @@ public abstract class AEntityD_Definable<JSONDefinition extends AJSONMultiModelP
                     }, false);
                 } else {
                     //Either a hard-coded value, or one we are wrapping.  No logic required.
-                    return new ComputedVariable(this, variable);
+                    return new ComputedVariable(this, variable, null);
                 }
             }
         }
@@ -912,7 +912,7 @@ public abstract class AEntityD_Definable<JSONDefinition extends AJSONMultiModelP
      * the scale parameter as only the variable value should be scaled, not the offset..
      */
     public final double getAnimatedVariableValue(DurationDelayClock clock, double scaleFactor, double offset, float partialTicks) {
-        double value = getVariable(clock.animation.variable).getValue(partialTicks);
+        double value = getVariable(clock.animation.variable).computeValue(partialTicks);
         if (!clock.isUseful) {
             return clampAndScale(value, clock.animation, scaleFactor, offset);
         } else {
@@ -954,7 +954,7 @@ public abstract class AEntityD_Definable<JSONDefinition extends AJSONMultiModelP
         //Check text values first, then animated values.
         String value = getRawTextVariableValue(textDef, 0);
         if (value == null) {
-            return String.format(textDef.variableFormat, getVariable(textDef.variableName).getValue(partialTicks) * textDef.variableFactor);
+            return String.format(textDef.variableFormat, getVariable(textDef.variableName).computeValue(partialTicks) * textDef.variableFactor);
         } else {
             return String.format(textDef.variableFormat, value);
         }
@@ -971,7 +971,7 @@ public abstract class AEntityD_Definable<JSONDefinition extends AJSONMultiModelP
      * Helper method to get a variable for this entity.
      */
     public final double getVariableValue(String variable) {
-        return computedVariables.computeIfAbsent(variable, key -> createComputedVariable(variable)).getValue(0);
+        return computedVariables.computeIfAbsent(variable, key -> createComputedVariable(variable)).computeValue(0);
     }
 
     /**
@@ -1013,7 +1013,7 @@ public abstract class AEntityD_Definable<JSONDefinition extends AJSONMultiModelP
             for (List<String> variableList : list) {
                 boolean listIsTrue = false;
                 for (String variableName : variableList) {
-                    if (getVariable(variableName).isActive()) {
+                    if (getVariable(variableName).isActive) {
                         listIsTrue = true;
                         break;
                     }
