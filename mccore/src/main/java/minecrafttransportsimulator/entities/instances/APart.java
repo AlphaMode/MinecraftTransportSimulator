@@ -76,6 +76,7 @@ public abstract class APart extends AEntityF_Multipart<JSONPart> {
     private boolean playerHoldingWrench;
     private boolean playerHoldingScrewdriverLastTick;
     private boolean playerHoldingScrewdriver;
+    private final List<String> variablesOnParents = new ArrayList<>();
 
     /**
      * The local offset from this part, to the master entity.  This may not be the offset from the part to the entity it is
@@ -140,6 +141,10 @@ public abstract class APart extends AEntityF_Multipart<JSONPart> {
 
         //Set to false to re-create animation since we don't want to use old animations we are linked to.
         animationsInitialized = false;
+        
+        //Remove existing parent variables, since they will have changed.
+        //They will be re-created next request.
+        variablesOnParents.forEach(variable -> removeVariable(variable));
     }
 
     @Override
@@ -558,7 +563,14 @@ public abstract class APart extends AEntityF_Multipart<JSONPart> {
     public ComputedVariable createComputedVariable(String variable) {
         //If the variable is prefixed with "parent_", then we need to get our parent's value.
         if (variable.startsWith("parent_")) {
-            return entityOn.createComputedVariable(variable.substring("parent_".length()));
+        	if(entityOn == null) {
+        		//We might not have the entity set yet if we're constructing.
+        		//If not, note this for later.
+        		variablesOnParents.add(variable);
+        		return ZERO_VARIABLE;
+        	}else {
+        		return entityOn.createComputedVariable(variable.substring("parent_".length()));	
+        	}
         }else {
             switch (variable) {
                 case ("part_present"):

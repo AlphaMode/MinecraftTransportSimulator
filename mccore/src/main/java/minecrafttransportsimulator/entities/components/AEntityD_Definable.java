@@ -966,6 +966,14 @@ public abstract class AEntityD_Definable<JSONDefinition extends AJSONMultiModelP
     public ComputedVariable getVariable(String variable) {
         return computedVariables.computeIfAbsent(variable, key -> createComputedVariable(variable));
     }
+    
+    /**
+     * Helper method to remove a variable object for this entity.
+     * Useful if one needs to re-create a variable for any reason.
+     */
+    public void removeVariable(String variable) {
+        computedVariables.remove(variable);
+    }
 
     /**
      * Helper method for variable modification.
