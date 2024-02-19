@@ -317,7 +317,7 @@ public abstract class AEntityE_Interactable<JSONDefinition extends AJSONInteract
                     animationsInitialized = false;
                     return;
                 }
-                if (groupDef.health == 0 || getVariableValue("collision_" + (i + 1) + "_damage") < groupDef.health) {
+                if (groupDef.health == 0 || getVariable("collision_" + (i + 1) + "_damage").currentValue < groupDef.health) {
                     AnimationSwitchbox switchBox = collisionSwitchboxes.get(groupDef);
                     if (switchBox != null) {
                         if (switchBox.runSwitchbox(0, false)) {

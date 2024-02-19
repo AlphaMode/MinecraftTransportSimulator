@@ -448,9 +448,8 @@ public abstract class AEntityF_Multipart<JSONDefinition extends AJSONPartProvide
             //First check if we need to reduce health of the hitbox.
             boolean hitOperationalHitbox = false;
             if (hitBox.groupDef != null && hitBox.groupDef.health != 0 && !damage.isWater) {
-                String variableName = "collision_" + (hitEntity.definition.collisionGroups.indexOf(hitBox.groupDef) + 1) + "_damage";
-                double currentDamage = hitEntity.getVariableValue(variableName);
                 if (bullet != null) {
+                	double currentDamage = hitEntity.getVariable("collision_" + (hitEntity.definition.collisionGroups.indexOf(hitBox.groupDef) + 1) + "_damage").currentValue;
                     bullet.displayDebugMessage("HIT HEALTH BOX.  BOX CURRENT DAMAGE: " + currentDamage + " OF " + hitBox.groupDef.health + "  ATTACKED FOR: " + damage.amount);
                 }
 

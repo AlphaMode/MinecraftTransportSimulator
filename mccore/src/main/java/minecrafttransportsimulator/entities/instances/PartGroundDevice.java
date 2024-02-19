@@ -46,11 +46,11 @@ public class PartGroundDevice extends APart {
 
     //Internal properties
     @ModifiedValue
-    public float currentMotiveFriction;
+    public double currentMotiveFriction;
     @ModifiedValue
-    public float currentLateralFriction;
+    public double currentLateralFriction;
     @ModifiedValue
-    private float currentHeight;
+    private double currentHeight;
     private final Point3D groundPosition = new Point3D();
     private BlockMaterial materialBelow;
     public final Point3D wheelbasePoint;
@@ -253,7 +253,8 @@ public class PartGroundDevice extends APart {
                     	currentHeight = adjustVariable(modifier, currentHeight);
                         break;
                     default:
-                        setVariableValue(modifier.variable, adjustVariable(modifier, (float) getVariableValue(modifier.variable)));
+                    	ComputedVariable variable = getVariable(modifier.variable);
+                    	variable.setTo(adjustVariable(modifier, variable.currentValue), false);
                         break;
                 }
             }

@@ -84,23 +84,23 @@ public class EntityVehicleF_Physics extends AEntityVehicleE_Powered {
 
     //Properties.
     @ModifiedValue
-    public float currentWingArea;
+    public double currentWingArea;
     @ModifiedValue
-    public float currentWingSpan;
+    public double currentWingSpan;
     @ModifiedValue
-    public float currentAileronArea;
+    public double currentAileronArea;
     @ModifiedValue
-    public float currentElevatorArea;
+    public double currentElevatorArea;
     @ModifiedValue
-    public float currentRudderArea;
+    public double currentRudderArea;
     @ModifiedValue
-    public float currentDragCoefficient;
+    public double currentDragCoefficient;
     @ModifiedValue
-    public float currentBallastVolume;
+    public double currentBallastVolume;
     @ModifiedValue
-    public float currentWaterBallastFactor;
+    public double currentWaterBallastFactor;
     @ModifiedValue
-    public float currentAxleRatio;
+    public double currentAxleRatio;
 
     //Coefficients.
     private double wingLiftCoeff;
@@ -289,7 +289,8 @@ public class EntityVehicleF_Physics extends AEntityVehicleE_Powered {
                         currentAxleRatio = adjustVariable(modifier, currentAxleRatio);
                         break;
                     default:
-                        setVariableValue(modifier.variable, adjustVariable(modifier, (float) getVariableValue(modifier.variable)));
+                    	ComputedVariable variable = getVariable(modifier.variable);
+                    	variable.setTo(adjustVariable(modifier, variable.currentValue), false);
                         break;
                 }
             }
