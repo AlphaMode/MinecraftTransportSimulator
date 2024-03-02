@@ -608,7 +608,7 @@ public class PartGun extends APart {
                         internalOrientation.angles.x = adjustVariable(modifier, internalOrientation.angles.x);
                         break;
                     default:
-                    	ComputedVariable variable = getVariable(modifier.variable);
+                    	ComputedVariable variable = getOrCreateVariable(modifier.variable);
                     	variable.setTo(adjustVariable(modifier, variable.currentValue), false);
                         break;
                 }
@@ -1118,7 +1118,7 @@ public class PartGun extends APart {
     }
 
     @Override
-    public ComputedVariable createComputedVariable(String variable) {
+    public ComputedVariable createComputedVariable(String variable, boolean createDefaultIfNotPresent) {
         switch (variable) {
             case ("gun_inhand"):
                 return new ComputedVariable(this, variable, partialTicks -> entityOn instanceof EntityPlayerGun ? 1 : 0, false);
@@ -1197,7 +1197,7 @@ public class PartGun extends APart {
             case ("gun_bullet_pitch"):
                 return new ComputedVariable(this, variable, partialTicks -> currentBullet != null ? currentBullet.orientation.angles.x - orientation.angles.x : 0, false);
             default:
-                return super.createComputedVariable(variable);
+                return super.createComputedVariable(variable, createDefaultIfNotPresent);
         }
     }
 

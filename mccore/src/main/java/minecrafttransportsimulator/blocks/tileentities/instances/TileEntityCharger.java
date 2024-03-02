@@ -70,7 +70,7 @@ public class TileEntityCharger extends ATileEntityFuelPump implements ITileEntit
     }
 
     @Override
-    public ComputedVariable createComputedVariable(String variable) {
+    public ComputedVariable createComputedVariable(String variable, boolean createDefaultIfNotPresent) {
         switch (variable) {
             case ("charger_active"):
                 return new ComputedVariable(this, variable, partialTicks -> connectedVehicle != null ? 1 : 0, false);
@@ -83,7 +83,7 @@ public class TileEntityCharger extends ATileEntityFuelPump implements ITileEntit
             case ("charger_vehicle_percentage"):
                 return new ComputedVariable(this, variable, partialTicks -> connectedVehicle != null ? connectedVehicle.fuelTank.getFluidLevel() / connectedVehicle.fuelTank.getMaxLevel() : 0, false);
             default:
-                return super.createComputedVariable(variable);
+                return super.createComputedVariable(variable, createDefaultIfNotPresent);
         }
     }
 }

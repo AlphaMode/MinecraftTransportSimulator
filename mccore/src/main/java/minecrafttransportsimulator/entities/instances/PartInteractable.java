@@ -275,7 +275,7 @@ public final class PartInteractable extends APart {
     }
 
     @Override
-    public ComputedVariable createComputedVariable(String variable) {
+    public ComputedVariable createComputedVariable(String variable, boolean createDefaultIfNotPresent) {
         switch (variable) {
             case ("interactable_count"):
                 return new ComputedVariable(this, variable, partialTicks -> inventory != null ? inventory.getCount() : 0, false);
@@ -286,7 +286,7 @@ public final class PartInteractable extends APart {
             case ("interactable_active"):
                 return new ComputedVariable(this, variable, partialTicks -> !playersInteracting.isEmpty() ? 1 : 0, false);
             default:
-                return super.createComputedVariable(variable);
+                return super.createComputedVariable(variable, createDefaultIfNotPresent);
         }
     }
 

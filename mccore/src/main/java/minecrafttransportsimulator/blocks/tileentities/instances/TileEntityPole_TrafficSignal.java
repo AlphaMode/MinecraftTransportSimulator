@@ -27,12 +27,12 @@ public class TileEntityPole_TrafficSignal extends ATileEntityPole_Component {
         if (linkedController != null) {
             //Remove all old lights, then add our new one.
             for (LightType light : LightType.values()) {
-                getVariable(light.lowercaseName).setTo(0, false);
+                getOrCreateVariable(light.lowercaseName).setTo(0, false);
             }
             if (linkedController.isValid && linkedController.controlledSignals.contains(this)) {
                 for (SignalGroup group : linkedController.signalGroups.get(axis)) {
                     if (group.currentLight.lowercaseName != null) {
-                        getVariable(group.currentLight.lowercaseName).setTo(1,  false);
+                        getOrCreateVariable(group.currentLight.lowercaseName).setTo(1,  false);
                     }
                 }
             } else {
@@ -42,12 +42,12 @@ public class TileEntityPole_TrafficSignal extends ATileEntityPole_Component {
     }
 
     @Override
-    public ComputedVariable createComputedVariable(String variable) {
+    public ComputedVariable createComputedVariable(String variable, boolean createDefaultIfNotPresent) {
         switch (variable) {
             case ("linked"):
                 return new ComputedVariable(this, variable, partialTicks -> linkedController != null ? 1 : 0, false);
             default:
-                return super.createComputedVariable(variable);
+                return super.createComputedVariable(variable, createDefaultIfNotPresent);
         }
     }
 }
