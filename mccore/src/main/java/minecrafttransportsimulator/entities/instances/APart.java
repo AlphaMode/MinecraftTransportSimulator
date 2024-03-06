@@ -141,8 +141,8 @@ public abstract class APart extends AEntityF_Multipart<JSONPart> {
         //Set to false to re-create animation since we don't want to use old animations we are linked to.
         animationsInitialized = false;
 
-        //Remove any variables that aren't on this entity since we changed linking.
-        computedVariables.entrySet().removeIf(mapEntry -> mapEntry.getValue().entity != this);
+        //Reset any variables that aren't on this entity since we changed linking.
+        resetVariablesMatchingFunction(variable -> variable.entity != this);
     }
 
     @Override
@@ -174,7 +174,11 @@ public abstract class APart extends AEntityF_Multipart<JSONPart> {
 
         //Add parent constants.
         if (placementDefinition.constantValues != null) {
-            placementDefinition.constantValues.forEach((constantKey, constantValue) -> getOrCreateVariable(constantKey).setTo(constantValue, false));
+            placementDefinition.constantValues.forEach((constantKey, constantValue) -> {
+                ComputedVariable newVariable = new ComputedVariable(this, constantKey, null);
+                newVariable.setTo(constantValue, false);
+                addVariable(newVariable);
+            });
         }
     }
 
@@ -568,7 +572,7 @@ public abstract class APart extends AEntityF_Multipart<JSONPart> {
                 return 0;
             }, false);
         } else {
-            //If the variable is prefixed with "parent_" or "vehicle_", then we need to get our parent's value.
+            //If the variable is prefixed with "parent_" or "vehicle_", then we need to get our parent's or vehicle's value.
             if (variable.startsWith("vehicle_")) {
                 if (vehicleOn != null) {
                     return entityOn.createComputedVariable(variable.substring("vehicle_".length()), true);
