@@ -176,9 +176,6 @@ public abstract class AEntityD_Definable<JSONDefinition extends AJSONMultiModelP
         for (String variableName : data.getStrings("variables")) {
             addVariable(new ComputedVariable(this, variableName, data));
         }
-        if(definition.variableModifiers != null) {
-            definition.variableModifiers.forEach(modifier -> addVariable(new ComputedVariable(this, modifier.variable, null)));
-        }
         if (newlyCreated && definition.initialVariables != null) {
             definition.initialVariables.forEach(variable -> {
                 ComputedVariable newVariable = new ComputedVariable(this, variable, null);
@@ -979,7 +976,13 @@ public abstract class AEntityD_Definable<JSONDefinition extends AJSONMultiModelP
         if (computedVar == null) {
             if (variable.startsWith(ComputedVariable.INVERTED_PREFIX)) {
                 //Get the normal variable, and then reference the inverted internal variable instead.
-                computedVar = createComputedVariable(variable.substring(ComputedVariable.INVERTED_PREFIX.length()), true).invertedVariable;
+                //First try to get the actual variable, just the inverted one.  If we don't have it, make it and use the inversion.
+                String normalVariable = variable.substring(ComputedVariable.INVERTED_PREFIX.length());
+                computedVar = computedVariables.get(normalVariable);
+                if (computedVar == null) {
+                    computedVar = createComputedVariable(normalVariable, true);
+                }
+                computedVar = computedVar.invertedVariable;
             } else {
                 computedVar = createComputedVariable(variable, true);
             }
