@@ -6,9 +6,12 @@ import java.util.List;
 import java.util.Map;
 
 import minecrafttransportsimulator.items.components.AItemPack;
+import minecrafttransportsimulator.items.components.AItemPart;
 import minecrafttransportsimulator.items.components.AItemSubTyped;
+import minecrafttransportsimulator.items.instances.ItemVehicle;
 import minecrafttransportsimulator.mcinterface.IWrapperItemStack;
 import minecrafttransportsimulator.mcinterface.InterfaceManager;
+import minecrafttransportsimulator.systems.ConfigSystem;
 
 /**
  * Class that contains information about one set of materials for a pack item.
@@ -74,14 +77,18 @@ public class PackMaterialComponent {
         String currentSubName = "";
         if (forRepair) {
             if (item.definition.general.repairMaterialLists != null) {
-                if (includeRepair) {
-                    if (InterfaceManager.coreInterface.isGameFlattened()) {
-                        itemTexts.add(InterfaceManager.coreModID + ":" + item.getRegistrationName() + "1");
-                    } else {
-                        itemTexts.add(InterfaceManager.coreModID + ":" + item.getRegistrationName() + ":0:1");
-                    }
-                }
                 itemTexts.addAll(item.definition.general.repairMaterialLists.get(recipeIndex));
+            } else if (item instanceof ItemVehicle && !ConfigSystem.settings.general.defaultVehicleRepairMaterials.value.isEmpty()) {
+                itemTexts.addAll(ConfigSystem.settings.general.defaultVehicleRepairMaterials.value);
+            } else if (item instanceof AItemPart && !ConfigSystem.settings.general.defaultPartRepairMaterials.value.isEmpty()) {
+                itemTexts.addAll(ConfigSystem.settings.general.defaultPartRepairMaterials.value);
+            }
+            if (includeRepair && !itemTexts.isEmpty()) {
+                if (InterfaceManager.coreInterface.isGameFlattened()) {
+                    itemTexts.add(InterfaceManager.coreModID + ":" + item.getRegistrationName() + "1");
+                } else {
+                    itemTexts.add(InterfaceManager.coreModID + ":" + item.getRegistrationName() + ":0:1");
+                }
             }
         } else {
             //Get main materials.

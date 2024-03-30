@@ -275,7 +275,7 @@ public class GUIPartBench extends AGUIBase {
         vehicleInfoButton.visible = currentItem instanceof ItemVehicle && !displayVehicleInfo;
         vehicleDescriptionButton.visible = currentItem instanceof ItemVehicle && displayVehicleInfo;
         repairCraftingButton.visible = !viewingRepair && currentItem != null;
-        repairCraftingButton.enabled = repairCraftingButton.visible && currentItem.definition.general.repairMaterialLists != null && !currentItem.definition.general.repairMaterialLists.isEmpty();
+        repairCraftingButton.enabled = repairCraftingButton.visible && !materials.isEmpty();
         normalCraftingButton.visible = viewingRepair;
         partInfo.visible = !displayVehicleInfo;
         vehicleInfo.visible = displayVehicleInfo;
