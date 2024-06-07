@@ -7,7 +7,7 @@
 				"client.CameraMixin",
 				"client.HumanoidModelMixin",
 				"client.ListenerMixin",
-				"client.ReloadableResourceManager",
+				"client.ReloadableResourceManagerMixin",
 				"client.VillagerModelMixin",
 				"client.WorldRendererMixin"
     ],

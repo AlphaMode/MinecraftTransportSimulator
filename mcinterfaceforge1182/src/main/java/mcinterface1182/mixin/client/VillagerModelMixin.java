@@ -16,9 +16,9 @@ import net.minecraft.world.entity.Entity;
 @Mixin(VillagerModel.class)
 public abstract class VillagerModelMixin<T extends Entity> {
     @Shadow
-    private ModelPart leg0;
+    private ModelPart rightLeg;
     @Shadow
-    private ModelPart leg1;
+    private ModelPart leftLeg;
 
     /**
      * Need this method to adjust model legs and arms for sitting players.
@@ -33,12 +33,12 @@ public abstract class VillagerModelMixin<T extends Entity> {
             //If we render standing, don't do anything since villagers normally stand.
             //If we are sitting however, make them sit.
             if (!(ridingEntity instanceof PartSeat && ((PartSeat) ridingEntity).definition.seat.standing)) {
-                leg0.xRot = (float) Math.toRadians(-90);
-                leg0.yRot = 0;
-                leg0.zRot = 0;
-                leg1.xRot = (float) Math.toRadians(-90);
-                leg1.yRot = 0;
-                leg1.zRot = 0;
+                rightLeg.xRot = (float) Math.toRadians(-90);
+                rightLeg.yRot = 0;
+                rightLeg.zRot = 0;
+                leftLeg.xRot = (float) Math.toRadians(-90);
+                leftLeg.yRot = 0;
+                leftLeg.zRot = 0;
             }
         }
     }
