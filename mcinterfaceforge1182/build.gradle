@@ -15,8 +15,8 @@ buildscript {
 //Apply plugins
 apply plugin: "net.minecraftforge.gradle"
 apply plugin: "org.parchmentmc.librarian.forgegradle"
-apply plugin: "org.spongepowered.mixin"
 apply plugin: "eclipse"
+apply plugin: "org.spongepowered.mixin"
 
 //Set file name.
 version = "${project.mc_version}-${project.mod_version}"
