@@ -18,6 +18,7 @@ apply plugin: "org.parchmentmc.librarian.forgegradle"
 apply plugin: "eclipse"
 apply plugin: "org.spongepowered.mixin"
 
+
 //Set file name.
 version = "${project.mc_version}-${project.mod_version}"
 group = project.mod_group
@@ -83,7 +84,9 @@ dependencies {
     annotationProcessor "org.spongepowered:mixin:0.8.5:processor"
 
     //Core to use.
-    embed(project(":mccore"))
+    //embed project(":mccore")
+    embed("com.googlecode.soundlibs:jlayer:1.0.1.4")
+    embed("org.jcraft:jorbis:0.0.17")
 
 		//Compile against the JEI API but do not include it at runtime
     compileOnly fg.deobf("mezz.jei:${project.jei_api_version}")

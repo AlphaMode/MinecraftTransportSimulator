@@ -23,3 +23,10 @@ run
 
 # Files from Forge MDK
 forge*changelog.txt
+
+# Hacked-in core files cause Eclipse is being dumb.
+src/main/java/minecrafttransportsimulator
+src/main/resources/assets/mts/jsondefs
+src/main/resources/assets/mts/objmodels
+src/main/resources/assets/mts/sounds
+src/main/resources/assets/mts/textures

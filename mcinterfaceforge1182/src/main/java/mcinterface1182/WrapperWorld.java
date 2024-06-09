@@ -221,7 +221,7 @@ public class WrapperWorld extends AWrapperWorld {
 
     @Override
     public File getDataFile() {
-        return ((DimensionDataStorageMixin) ((ServerLevel) world).getDataStorage()).getDataFolder();
+        return new File(((DimensionDataStorageMixin) ((ServerLevel) world).getDataStorage()).getDataFolder(), "mtsdata.dat");
     }
 
     @Override

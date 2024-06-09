@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.logging.log4j.LogManager;
@@ -17,7 +16,6 @@ import minecrafttransportsimulator.blocks.instances.BlockCollision;
 import minecrafttransportsimulator.blocks.tileentities.components.ITileEntityEnergyCharger;
 import minecrafttransportsimulator.blocks.tileentities.components.ITileEntityFluidTankProvider;
 import minecrafttransportsimulator.blocks.tileentities.components.ITileEntityInventoryProvider;
-import minecrafttransportsimulator.items.components.AItemBase;
 import minecrafttransportsimulator.items.components.AItemPack;
 import minecrafttransportsimulator.items.components.AItemSubTyped;
 import minecrafttransportsimulator.items.components.IItemBlock;
@@ -60,6 +58,10 @@ public class InterfaceLoader {
     private final String gameDirectory;
     public static Set<String> packIDs = new HashSet<>();
 
+    private static List<BuilderBlock> normalBlocks = new ArrayList<>();
+    private static List<BuilderBlock> fluidBlocks = new ArrayList<>();
+    private static List<BuilderBlock> inventoryBlocks = new ArrayList<>();
+    private static List<BuilderBlock> chargerBlocks = new ArrayList<>();
 
     public InterfaceLoader() {
         gameDirectory = FMLPaths.GAMEDIR.get().toFile().getAbsolutePath();
@@ -111,74 +113,70 @@ public class InterfaceLoader {
         packIDs.addAll(PackParser.getAllPackIDs());
 
         //Create all pack items.  We need to do this before anything else.
-        //block registration comes first, and we use the items registered to determine
+        //Item registration comes first, and we use the items registered to determine
         //which blocks we need to register.
+        Set<ABlockBase> blocksRegistred = new HashSet<>();
         for (String packID : PackParser.getAllPackIDs()) {
             for (AItemPack<?> item : PackParser.getAllItemsForPack(packID, true)) {
                 if (item.autoGenerate()) {
-                    Item.Properties itemProperties = new Item.Properties();
+                    //Crate the item registry creator.
+                    BuilderItem.ITEMS.register(item.getRegistrationName(), () -> {
+                        Item.Properties itemProperties = new Item.Properties();
 
-                    //Check if the creative tab is set/created.
-                    //The only except is for "invisible" parts of the core mod, these are internal.
-                    boolean hideOnCreativeTab = item.definition.general.hideOnCreativeTab || (item instanceof AItemSubTyped && ((AItemSubTyped<?>) item).subDefinition.hideOnCreativeTab);
-                    if (!hideOnCreativeTab && (!item.definition.packID.equals(InterfaceManager.coreModID) || !item.definition.systemName.contains("invisible"))) {
-                        String tabID = item.getCreativeTabID();
-                        if (!BuilderCreativeTab.createdTabs.containsKey(tabID)) {
-                            JSONPack packConfiguration = PackParser.getPackConfiguration(tabID);
-                            AItemPack<?> tabItem = packConfiguration.packItem != null ? PackParser.getItem(packConfiguration.packID, packConfiguration.packItem) : null;
-                            BuilderCreativeTab.createdTabs.put(tabID, new BuilderCreativeTab(packConfiguration.packName, tabItem));
+                        //Check if the creative tab is set/created.
+                        //The only exception is for "invisible" parts of the core mod, these are internal.
+                        boolean hideOnCreativeTab = item.definition.general.hideOnCreativeTab || (item instanceof AItemSubTyped && ((AItemSubTyped<?>) item).subDefinition.hideOnCreativeTab);
+                        if (!hideOnCreativeTab && (!item.definition.packID.equals(InterfaceManager.coreModID) || !item.definition.systemName.contains("invisible"))) {
+                            String tabID = item.getCreativeTabID();
+                            if (!BuilderCreativeTab.createdTabs.containsKey(tabID)) {
+                                JSONPack packConfiguration = PackParser.getPackConfiguration(tabID);
+                                AItemPack<?> tabItem = packConfiguration.packItem != null ? PackParser.getItem(packConfiguration.packID, packConfiguration.packItem) : null;
+                                BuilderCreativeTab.createdTabs.put(tabID, new BuilderCreativeTab(packConfiguration.packName, tabItem));
+                            }
+                            itemProperties.tab(BuilderCreativeTab.createdTabs.get(tabID));
                         }
-                        itemProperties.tab(BuilderCreativeTab.createdTabs.get(tabID));
-                    }
-                    itemProperties.stacksTo(item.getStackSize());
-                    if (item instanceof ItemItem && ((ItemItem) item).definition.food != null) {
-                        IItemFood food = (IItemFood) item;
-                        itemProperties.food(new FoodProperties.Builder().nutrition(food.getHungerAmount()).saturationMod(food.getSaturationAmount()).build());
-                    }
-                    new BuilderItem(itemProperties, item);
+                        itemProperties.stacksTo(item.getStackSize());
+                        if (item instanceof ItemItem && ((ItemItem) item).definition.food != null) {
+                            IItemFood food = (IItemFood) item;
+                            itemProperties.food(new FoodProperties.Builder().nutrition(food.getHungerAmount()).saturationMod(food.getSaturationAmount()).build());
+                        }
+
+                        return new BuilderItem(itemProperties, item);
+                    });
                 }
-            }
-        }
 
-        //Init the language system for the created items.
-        LanguageSystem.init();
+                //If this item is an IItemBlock, generate a block in the registry for it.
+                //iterate over all items and get the blocks they spawn.
+                //Not only does this prevent us from having to manually set the blocks
+                //we also pre-generate the block classes here and note which tile entities they go to.
+                if (item instanceof IItemBlock) {
+                    ABlockBase itemBlockBlock = ((IItemBlock) item).getBlock();
+                    if (!blocksRegistred.contains(itemBlockBlock)) {
+                        //New block class detected.  Register it and its instance.
+                        String name = itemBlockBlock.getClass().getSimpleName().substring("Block".length()).toLowerCase(Locale.ROOT);
+                        blocksRegistred.add(itemBlockBlock);
+                        BuilderBlock.BLOCKS.register(name, () -> {
+                            BuilderBlock wrapper;
 
-        //Register all items in our wrapper map.
-        for (Entry<AItemBase, BuilderItem> entry : BuilderItem.itemMap.entrySet()) {
-            AItemPack<?> item = (AItemPack<?>) entry.getKey();
-            BuilderItem mcItem = entry.getValue();
+                            if (itemBlockBlock instanceof ABlockBaseTileEntity) {
+                                wrapper = new BuilderBlockTileEntity(itemBlockBlock);
+                                if (ITileEntityFluidTankProvider.class.isAssignableFrom(((ABlockBaseTileEntity) itemBlockBlock).getTileEntityClass())) {
+                                    fluidBlocks.add(wrapper);
+                                } else if (ITileEntityInventoryProvider.class.isAssignableFrom(((ABlockBaseTileEntity) itemBlockBlock).getTileEntityClass())) {
+                                    inventoryBlocks.add(wrapper);
+                                } else if (ITileEntityEnergyCharger.class.isAssignableFrom(((ABlockBaseTileEntity) itemBlockBlock).getTileEntityClass())) {
+                                    chargerBlocks.add(wrapper);
+                                } else {
+                                    normalBlocks.add(wrapper);
+                                }
+                            } else {
+                                wrapper = new BuilderBlock(itemBlockBlock);
+                            }
+                            BuilderBlock.blockMap.put(itemBlockBlock, wrapper);
 
-            //Register the item.
-            BuilderItem.ITEMS.register(item.getRegistrationName(), () -> mcItem);
-
-            //If the item is for OreDict, make it a fake tag, since we are forced to use JSON otherwise.
-            //Stupid JSON everything without code hooks.
-            if (item.definition.general.oreDict != null) {
-                String lowerCaseOre = item.definition.general.oreDict.toLowerCase(Locale.ROOT);
-                List<BuilderItem> items = InterfaceCore.taggedItems.get(lowerCaseOre);
-                if (items == null) {
-                    items = new ArrayList<>();
-                    InterfaceCore.taggedItems.put(lowerCaseOre, items);
-                }
-                items.add(mcItem);
-            }
-        }
-
-        //Register the IItemBlock blocks.  We cheat here and
-        //iterate over all items and get the blocks they spawn.
-        //Not only does this prevent us from having to manually set the blocks
-        //we also pre-generate the block classes here.
-        List<ABlockBase> blocksRegistred = new ArrayList<>();
-        for (AItemBase item : BuilderItem.itemMap.keySet()) {
-            if (item instanceof IItemBlock) {
-                ABlockBase itemBlockBlock = ((IItemBlock) item).getBlock();
-                if (!blocksRegistred.contains(itemBlockBlock)) {
-                    //New block class detected.  Register it and its instance.
-                    BuilderBlock wrapper = new BuilderBlock(itemBlockBlock);
-                    String name = itemBlockBlock.getClass().getSimpleName().substring("Block".length()).toLowerCase(Locale.ROOT);
-                    BuilderBlock.BLOCKS.register(name, () -> wrapper);
-                    BuilderBlock.blockMap.put(itemBlockBlock, wrapper);
-                    blocksRegistred.add(itemBlockBlock);
+                            return wrapper;
+                        });
+                    }
                 }
             }
         }
@@ -186,32 +184,18 @@ public class InterfaceLoader {
         //Register the collision blocks.
         for (int i = 0; i < BlockCollision.blockInstances.size(); ++i) {
             BlockCollision collisionBlock = BlockCollision.blockInstances.get(i);
-            BuilderBlock wrapper = new BuilderBlock(collisionBlock);
             String name = collisionBlock.getClass().getSimpleName().substring("Block".length()).toLowerCase(Locale.ROOT) + i;
-            BuilderBlock.BLOCKS.register(name, () -> wrapper);
-            BuilderBlock.blockMap.put(collisionBlock, wrapper);
+            BuilderBlock.BLOCKS.register(name, () -> {
+                BuilderBlock wrapper = new BuilderBlock(collisionBlock);
+                BuilderBlock.blockMap.put(collisionBlock, wrapper);
+                return wrapper;
+            });
         }
 
-        //Register the TEs.  Has to be done last to ensure block maps are populated.
-        List<BuilderBlock> normalBlocks = new ArrayList<>();
-        List<BuilderBlock> fluidBlocks = new ArrayList<>();
-        List<BuilderBlock> inventoryBlocks = new ArrayList<>();
-        List<BuilderBlock> chargerBlocks = new ArrayList<>();
+        //Init the language system for the created items and blocks.
+        LanguageSystem.init();
 
-        BuilderBlock.blockMap.values().forEach(builder -> {
-            if (builder.block instanceof ABlockBaseTileEntity) {
-                if (ITileEntityFluidTankProvider.class.isAssignableFrom(((ABlockBaseTileEntity) builder.block).getTileEntityClass())) {
-                    fluidBlocks.add(builder);
-                } else if (ITileEntityInventoryProvider.class.isAssignableFrom(((ABlockBaseTileEntity) builder.block).getTileEntityClass())) {
-                    inventoryBlocks.add(builder);
-                } else if (ITileEntityEnergyCharger.class.isAssignableFrom(((ABlockBaseTileEntity) builder.block).getTileEntityClass())) {
-                    chargerBlocks.add(builder);
-                } else {
-                    normalBlocks.add(builder);
-                }
-            }
-        });
-
+        //Init tile entities.  These will run after blocks, so the tile entity lists will be populated by this time.
         BuilderTileEntity.TE_TYPE = BuilderTileEntity.TILE_ENTITIES.register("builder_base", () -> BlockEntityType.Builder.of(BuilderTileEntity::new, normalBlocks.toArray(new BuilderBlock[0])).build(null));
         BuilderTileEntityFluidTank.TE_TYPE2 = BuilderTileEntity.TILE_ENTITIES.register("builder_fluidtank", () -> BlockEntityType.Builder.of(BuilderTileEntityFluidTank::new, fluidBlocks.toArray(new BuilderBlock[0])).build(null));
         BuilderTileEntityInventoryContainer.TE_TYPE2 = BuilderTileEntity.TILE_ENTITIES.register("builder_inventory", () -> BlockEntityType.Builder.of(BuilderTileEntityInventoryContainer::new, inventoryBlocks.toArray(new BuilderBlock[0])).build(null));
@@ -223,6 +207,7 @@ public class InterfaceLoader {
         BuilderEntityRenderForwarder.E_TYPE4 = ABuilderEntityBase.ENTITIES.register("builder_rendering", () -> EntityType.Builder.<BuilderEntityRenderForwarder>of(BuilderEntityRenderForwarder::new, MobCategory.MISC).sized(0.05F, 0.05F).clientTrackingRange(32 * 16).updateInterval(5).build("builder_rendering"));
 
         //Iterate over all pack items and find those that spawn entities.
+        //Register these with the IV internal system.
         for (AItemPack<?> packItem : PackParser.getAllPackItems()) {
             if (packItem instanceof IItemEntityProvider) {
                 ((IItemEntityProvider) packItem).registerEntities(BuilderEntityExisting.entityMap);

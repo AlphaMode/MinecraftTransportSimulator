@@ -123,30 +123,28 @@ public class InterfaceEventsEntityRendering {
      * vehicle HUds, GUIs, camera overlays, etc.
      */
     @SubscribeEvent
-    public static void onIVRenderOverlayPre(RenderGameOverlayEvent.Pre event) {
+    public static void onIVRenderOverlayPre(RenderGameOverlayEvent.Chat event) {
         //Do overlay rendering before the chat window is rendered.
         //This renders them over the main hotbar, but doesn't block the chat window.
-        if (event.getType().equals(RenderGameOverlayEvent.ElementType.CHAT)) {
-            //Set up variables.
-            Window window = Minecraft.getInstance().getWindow();
-            long displaySize = InterfaceManager.clientInterface.getPackedDisplaySize();
-            int screenWidth = (int) (displaySize >> Integer.SIZE);
-            int screenHeight = (int) displaySize;
-            double[] xPos = new double[1];
-            double[] yPos = new double[1];
-            GLFW.glfwGetCursorPos(window.getWindow(), xPos, yPos);
-            int mouseX = (int) (xPos[0] * screenWidth / window.getScreenWidth());
-            int mouseY = (int) (yPos[0] * screenHeight / window.getScreenHeight());
+        Window window = Minecraft.getInstance().getWindow();
+        long displaySize = InterfaceManager.clientInterface.getPackedDisplaySize();
+        int screenWidth = (int) (displaySize >> Integer.SIZE);
+        int screenHeight = (int) displaySize;
+        double[] xPos = new double[1];
+        double[] yPos = new double[1];
+        GLFW.glfwGetCursorPos(window.getWindow(), xPos, yPos);
+        int mouseX = (int) (xPos[0] * screenWidth / window.getScreenWidth());
+        int mouseY = (int) (yPos[0] * screenHeight / window.getScreenHeight());
 
-            float partialTicks = event.getPartialTicks();
-            boolean updateGUIs = screenWidth != lastScreenWidth || screenHeight != lastScreenHeight;
-            if (updateGUIs) {
-                lastScreenWidth = screenWidth;
-                lastScreenHeight = screenHeight;
-            }
-
-            InterfaceRender.renderGUI(event.getMatrixStack(), mouseX, mouseY, screenWidth, screenHeight, partialTicks, updateGUIs);
+        float partialTicks = event.getPartialTicks();
+        boolean updateGUIs = screenWidth != lastScreenWidth || screenHeight != lastScreenHeight;
+        if (updateGUIs) {
+            lastScreenWidth = screenWidth;
+            lastScreenHeight = screenHeight;
         }
+
+        //FIXME turn GUI rendering back on sometime.
+        //InterfaceRender.renderGUI(event.getMatrixStack(), mouseX, mouseY, screenWidth, screenHeight, partialTicks, updateGUIs);
     }
 
     /**

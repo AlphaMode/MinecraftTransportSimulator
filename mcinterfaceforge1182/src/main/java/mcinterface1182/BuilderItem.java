@@ -3,6 +3,7 @@ package mcinterface1182;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import javax.annotation.Nullable;
@@ -14,6 +15,7 @@ import com.google.common.collect.Multimap;
 import minecrafttransportsimulator.baseclasses.Point3D;
 import minecrafttransportsimulator.blocks.components.ABlockBase.Axis;
 import minecrafttransportsimulator.items.components.AItemBase;
+import minecrafttransportsimulator.items.components.AItemPack;
 import minecrafttransportsimulator.items.components.IItemFood;
 import minecrafttransportsimulator.items.instances.ItemItem;
 import minecrafttransportsimulator.items.instances.ItemPartGun;
@@ -80,6 +82,22 @@ public class BuilderItem extends Item implements IBuilderItemInterface {
         this.item = item;
         itemMap.put(item, this);
 
+        //If the item is for OreDict, make it a fake tag, since we are forced to use JSON otherwise.
+        //Stupid JSON everything without code hooks.
+        if (item instanceof AItemPack) {
+            AItemPack<?> packItem = (AItemPack<?>) item;
+            if (packItem.definition.general.oreDict != null) {
+                String lowerCaseOre = packItem.definition.general.oreDict.toLowerCase(Locale.ROOT);
+                List<BuilderItem> items = InterfaceCore.taggedItems.get(lowerCaseOre);
+                if (items == null) {
+                    items = new ArrayList<>();
+                    InterfaceCore.taggedItems.put(lowerCaseOre, items);
+                }
+                items.add(this);
+            }
+        }
+
+        //Add weapon modifiers.
         Builder<Attribute, AttributeModifier> builder = ImmutableMultimap.builder();
         if (item instanceof ItemItem && ((ItemItem) item).definition.weapon != null) {
             ItemItem weapon = (ItemItem) item;

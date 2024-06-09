@@ -9,7 +9,6 @@ import java.util.Map.Entry;
 import minecrafttransportsimulator.baseclasses.Point3D;
 import minecrafttransportsimulator.entities.instances.EntityPlayerGun;
 import minecrafttransportsimulator.guis.components.AGUIBase;
-import minecrafttransportsimulator.guis.instances.GUIPackMissing;
 import minecrafttransportsimulator.mcinterface.AWrapperWorld;
 import minecrafttransportsimulator.mcinterface.IInterfaceClient;
 import minecrafttransportsimulator.mcinterface.IWrapperItemStack;
@@ -244,7 +243,8 @@ public class InterfaceClient implements IInterfaceClient {
                         ControlSystem.controlGlobal(player);
                         if (((WrapperPlayer) player).player.tickCount % 100 == 0) {
                             if (!InterfaceManager.clientInterface.isGUIOpen() && !PackParser.arePacksPresent()) {
-                                new GUIPackMissing();
+                                //FIXME re-add this when we get GUIs workin.
+                                //new GUIPackMissing();
                             }
                         }
                     }

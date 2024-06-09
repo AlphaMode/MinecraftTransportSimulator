@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.OptionalDouble;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import javax.imageio.ImageIO;
@@ -20,6 +21,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexBuffer;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
@@ -46,7 +48,6 @@ import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
@@ -123,7 +124,8 @@ public class InterfaceRender implements IInterfaceRender {
         stackEntry.pose().multiply(matrix4f);
 
         if (data.vertexObject.isLines) {
-            VertexConsumer buffer = renderBuffer.getBuffer(RenderType.lines());
+            final RenderType renderType = renderTypes.computeIfAbsent("lines", k -> CustomRenderType.create("lines", DefaultVertexFormat.POSITION_COLOR, VertexFormat.Mode.LINES, 256, false, false, CustomRenderType.createForObject(data).createCompositeState(false)));
+            VertexConsumer buffer = renderBuffer.getBuffer(renderType);
             while (data.vertexObject.vertices.hasRemaining()) {
                 buffer.vertex(stackEntry.pose(), data.vertexObject.vertices.get(), data.vertexObject.vertices.get(), data.vertexObject.vertices.get());
                 buffer.color(data.color.red, data.color.green, data.color.blue, data.alpha);
@@ -132,6 +134,7 @@ public class InterfaceRender implements IInterfaceRender {
             //Rewind buffer for next read.
             data.vertexObject.vertices.rewind();
         } else {
+            /*
             String typeID = data.texture + data.isTranslucent + data.lightingMode + data.enableBrightBlending;
             final RenderType renderType;
             if (data.vertexObject.cacheVertices && !renderingGUI) {
@@ -139,7 +142,7 @@ public class InterfaceRender implements IInterfaceRender {
                 //FIXME try using tris for less rendering if possible.
                 renderType = renderTypes.computeIfAbsent(typeID, k -> CustomRenderType.create("mts_entity", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 2097152, true, data.isTranslucent, CustomRenderType.createForObject(data).createCompositeState(false)));
                 BufferData buffer = buffers.computeIfAbsent(data, k -> new BufferData(renderType, data));
-
+            
                 //Reset buffer if it's not ready.
                 if (changedSinceLastRender) {
                     buffer.builder.clear();
@@ -158,7 +161,7 @@ public class InterfaceRender implements IInterfaceRender {
                         float posX = data.vertexObject.vertices.get();
                         float posY = data.vertexObject.vertices.get();
                         float posZ = data.vertexObject.vertices.get();
-
+            
                         //Add the vertex format bits.
                         do {
                             buffer.builder.vertex(posX, posY, posZ, data.color.red, data.color.green, data.color.blue, data.alpha, texU, texV, OverlayTexture.NO_OVERLAY, data.worldLightValue, normalX, normalY, normalZ);
@@ -172,7 +175,7 @@ public class InterfaceRender implements IInterfaceRender {
                     buffer.buffer.upload(buffer.builder);
                     data.vertexObject.vertices.rewind();
                 }
-
+            
                 //Add this buffer to the list to render later.
                 List<RenderData> renders = queuedRenders.get(renderType);
                 if (renders == null) {
@@ -196,7 +199,7 @@ public class InterfaceRender implements IInterfaceRender {
                     float posX = data.vertexObject.vertices.get();
                     float posY = data.vertexObject.vertices.get();
                     float posZ = data.vertexObject.vertices.get();
-
+            
                     //Add the vertex.  Yes, we have to multiply this here on the CPU.  Yes, it's retarded because the GPU should be doing the matrix math.
                     //Blaze3d my ass, this is SLOWER than DisplayLists!
                     //We also need to add the 3rd vertex twice, since the buffer wants quads rather than tris.
@@ -217,7 +220,7 @@ public class InterfaceRender implements IInterfaceRender {
                 }
                 //Rewind buffer for next read.
                 data.vertexObject.vertices.rewind();
-            }
+            }*/
         }
         matrixStack.popPose();
     }
@@ -338,7 +341,7 @@ public class InterfaceRender implements IInterfaceRender {
         matrixStack = stack;
         matrixStack.pushPose();
         renderingGUI = true;
-        MultiBufferSource.BufferSource guiBuffer = MultiBufferSource.immediate(RenderSystem.renderThreadTesselator().getBuilder());
+        MultiBufferSource.BufferSource guiBuffer = MultiBufferSource.immediate(Tesselator.getInstance().getBuilder());
         renderBuffer = guiBuffer;
 
         //Render GUIs, re-creating their components if needed.
@@ -483,7 +486,7 @@ public class InterfaceRender implements IInterfaceRender {
 
             //Need to tell the immediate buffer  it's done rendering, else it'll hold onto the data and crash other systems.
             if (renderBuffer instanceof MultiBufferSource.BufferSource) {
-                ((MultiBufferSource.BufferSource) renderBuffer).endBatch();
+                //((MultiBufferSource.BufferSource) renderBuffer).endBatch();
             }
 
             //Now do the actual render.
@@ -499,6 +502,7 @@ public class InterfaceRender implements IInterfaceRender {
             RenderType renderType = renderEntry.getKey();
             List<RenderData> datas = renderEntry.getValue();
             if (!datas.isEmpty()) {
+                /*
                 renderType.setupRenderState();
                 for (RenderData data : datas) {
                     data.buffer.bind();
@@ -513,10 +517,11 @@ public class InterfaceRender implements IInterfaceRender {
                 }
                 renderType.format().clearBufferState();
                 renderType.clearRenderState();
+                */
                 datas.clear();
             }
         }
-        VertexBuffer.unbind();
+        //VertexBuffer.unbind();
         if (!removedRenders.isEmpty()) {
             removedRenders.forEach(render -> render.buffer.close());
             removedRenders.clear();
@@ -543,6 +548,8 @@ public class InterfaceRender implements IInterfaceRender {
     }
 
     private static class CustomRenderType extends RenderType {
+        private static final RenderStateShard.LineStateShard LINE_STATE = new RenderStateShard.LineStateShard(OptionalDouble.of(7.0D));
+        
         private CustomRenderType(String name, VertexFormat fmt, Mode glMode, int size, boolean doCrumbling, boolean depthSorting, Runnable onEnable, Runnable onDisable) {
             super(name, fmt, glMode, size, doCrumbling, depthSorting, onEnable, onDisable);
             throw new IllegalStateException("This class must not be instantiated, this is only here to gain access to the rendering constants.");
@@ -551,18 +558,24 @@ public class InterfaceRender implements IInterfaceRender {
         private static RenderType.CompositeState.CompositeStateBuilder createForObject(RenderableData data) {
             //Create the state builder.  Changed states are active, default states are commented to save processing but still show the state.
             RenderType.CompositeState.CompositeStateBuilder stateBuilder = RenderType.CompositeState.builder();
-
-            stateBuilder.setTextureState(getTexture(data.texture));
+            if (data.texture != null) {
+                stateBuilder.setTextureState(getTexture(data.texture));
+                stateBuilder.setShaderState(RENDERTYPE_ENTITY_SOLID_SHADER);
+            } else {
+                stateBuilder.setTextureState(NO_TEXTURE);
+                stateBuilder.setLineState(LINE_STATE);
+                stateBuilder.setShaderState(RENDERTYPE_LINES_SHADER);
+                stateBuilder.setCullState(NO_CULL);
+            }
             //Transparency is also blend function, so we need to override that with a custom one if we are doing bright blending.
             stateBuilder.setTransparencyState(data.enableBrightBlending ? BRIGHTNESS_TRANSPARENCY : (data.isTranslucent ? PROPER_TRANSLUCENT_TRANSPARENCY : RenderType.NO_TRANSPARENCY));
+            //FIXME need to check lighting, aplha, and smooth shading.
             //Diffuse lighting is the ambient lighting that auto-shades models.
             //stateBuilder.setDiffuseLightingState(data.lightingMode.disableTextureShadows ? NO_DIFFUSE_LIGHTING : DIFFUSE_LIGHTING);
             //Always smooth shading.
             //stateBuilder.setShadeModelState(SMOOTH_SHADE);
             //Use default alpha to remove alpha fragments in cut-out textures.
             //stateBuilder.setAlphaState(DEFAULT_ALPHA);
-            //FIXME Need to apply proper shader.
-            stateBuilder.setShaderState(NO_SHADER);
             //Depth test is fine, it ensures translucent things don't render in front of everything.
             //stateBuilder.setDepthTestState(LEQUAL_DEPTH_TEST);
             //Cull is fine.  Not sure what this does, actually...
