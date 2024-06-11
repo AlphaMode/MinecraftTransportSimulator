@@ -31,6 +31,7 @@ public abstract class MultiPackResourceManagerMixin {
         if (InterfaceLoader.packIDs.contains(location.getNamespace())) {
             //IV thing, check if we are supposed to override the path.
             //If so, return true since we know we will have the thing, or auto-create it.
+            System.out.println("cHECING");
             ci.setReturnValue(!location.getPath().contains("blockstates") && !location.getPath().contains("armatures") && !location.getPath().contains("mcmeta") && !location.getPath().contains("recipes") && !location.getPath().contains("advancements") && ((location.getPath().endsWith(".json") && !location.getPath().equals("sounds.json")) || location.getPath().endsWith(".png")));
         }
     }
@@ -40,6 +41,7 @@ public abstract class MultiPackResourceManagerMixin {
         if (InterfaceLoader.packIDs.contains(location.getNamespace()) && !location.getPath().contains("recipes") && !location.getPath().contains("advancements")) {
             //We are a IV thing, either return our updated location, or generate the thing we need.
             //Create stream return variable and get raw data.
+            System.out.println("cLOADING");
             final InputStream stream;
             String domain = location.getNamespace();
             String rawPackInfo = location.getPath();
