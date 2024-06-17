@@ -1,0 +1,23 @@
+{
+    "required": true,
+    "minVersion": "0.8",
+    "package": "mcinterface1201.mixin",
+    "compatibilityLevel": "JAVA_8",
+		"mixins": [
+          "common.ConcretePowderBlockMixin",
+          "common.EntityMixin",
+          "common.MinecraftMixin"
+		],
+    "client": [
+      "client.CameraInvokerMixin",
+      "client.ListenerMixin",
+      "client.SimpleReloadableResourceManagerMixin",
+      "client.HumanoidModelMixin",
+      "client.VillagerModelMixin",
+      "client.LevelRendererMixin"
+    ],
+    "injectors": {
+        "defaultRequire": 1
+    },
+    "refmap": "mts.refmap.json"
+}

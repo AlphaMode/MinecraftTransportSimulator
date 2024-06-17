@@ -491,4 +491,9 @@ public abstract class AEntityB_Existing extends AEntityA_Base {
         }
         return data;
     }
+
+    @FunctionalInterface
+    public interface MoveFunction {
+        void accept(AEntityA_Base pEntity, double pX, double pY, double pZ);
+    }
 }
