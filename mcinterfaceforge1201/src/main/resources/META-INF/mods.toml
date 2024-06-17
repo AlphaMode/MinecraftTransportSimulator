@@ -18,6 +18,6 @@ Realistic planes and cars for Minecraft!
 [[dependencies.mts]]
     modId="forge"
     mandatory=true
-    versionRange="[47.3.0,)"
+    versionRange="[47.1.3,)"
     ordering="NONE"
     side="BOTH"
