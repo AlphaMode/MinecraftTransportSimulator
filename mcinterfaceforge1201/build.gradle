@@ -51,6 +51,7 @@ minecraft {
             mods {
                 minecrafttransportsimulator {
                     source sourceSets.main
+                    source(project(":mccore").sourceSets.main)
                 }
             }
         }
@@ -61,6 +62,7 @@ minecraft {
             mods {
                 minecrafttransportsimulator {
                     source sourceSets.main
+                    source(project(":mccore").sourceSets.main)
                 }
             }
         }
