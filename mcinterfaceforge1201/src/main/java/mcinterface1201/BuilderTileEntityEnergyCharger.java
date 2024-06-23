@@ -10,7 +10,6 @@ import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.energy.IEnergyStorage;
-import net.minecraftforge.registries.RegistryObject;
 
 /**
  * Builder for tile entities that transform MC energy into power for other entities.
@@ -18,14 +17,14 @@ import net.minecraftforge.registries.RegistryObject;
  * @author don_bruce
  */
 public class BuilderTileEntityEnergyCharger extends BuilderTileEntity implements IEnergyStorage {
-    protected static RegistryObject<BlockEntityType<BuilderTileEntityEnergyCharger>> TE_TYPE2;
+    protected static BlockEntityType<BuilderTileEntityEnergyCharger> TE_TYPE2;
 
     private ITileEntityEnergyCharger charger;
     private static final int MAX_BUFFER = 1000;
     private int buffer;
 
     public BuilderTileEntityEnergyCharger(BlockPos pos, BlockState state) {
-        super(TE_TYPE2.get(), pos, state);
+        super(TE_TYPE2, pos, state);
     }
 
     @Override

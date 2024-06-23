@@ -36,6 +36,7 @@ import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.joml.Matrix4f;
 
@@ -54,7 +55,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *
  * @author don_bruce
  */
-@Mod.EventBusSubscriber(Dist.CLIENT)
+@Mod.EventBusSubscriber(value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class InterfaceRender implements IInterfaceRender {
     private static final Map<String, ResourceLocation> onlineTextures = new HashMap<>();
     private static final Map<String, ParsedGIF> animatedGIFs = new HashMap<>();
@@ -421,6 +422,7 @@ public class InterfaceRender implements IInterfaceRender {
      * Event that's called to setup the client.  We register our render wrapper
      * class here.
      */
+    @SubscribeEvent
     public static void registerRenderer(EntityRenderersEvent.RegisterRenderers event) {
         //Register the global entity rendering class.
         event.registerEntityRenderer(BuilderEntityRenderForwarder.E_TYPE4.get(), manager -> new EntityRenderer<>(manager) {

@@ -13,7 +13,6 @@ import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
-import net.minecraftforge.registries.RegistryObject;
 
 /**
  * Builder for tile entities that contain inventories.  This builder ticks.
@@ -21,12 +20,12 @@ import net.minecraftforge.registries.RegistryObject;
  * @author don_bruce
  */
 public class BuilderTileEntityInventoryContainer extends BuilderTileEntity implements IItemHandler {
-    protected static RegistryObject<BlockEntityType<BuilderTileEntityInventoryContainer>> TE_TYPE2;
+    protected static BlockEntityType<BuilderTileEntityInventoryContainer> TE_TYPE2;
 
     private EntityInventoryContainer inventory;
 
     public BuilderTileEntityInventoryContainer(BlockPos pos, BlockState state) {
-        super(TE_TYPE2.get(), pos, state);
+        super(TE_TYPE2, pos, state);
     }
 
     @Override

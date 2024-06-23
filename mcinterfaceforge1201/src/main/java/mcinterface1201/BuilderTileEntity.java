@@ -16,7 +16,6 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
 
 /**
  * Builder for the MC Tile Entity class   This class interfaces with all the MC-specific
@@ -35,7 +34,7 @@ import net.minecraftforge.registries.RegistryObject;
  */
 public class BuilderTileEntity extends BlockEntity {
     protected static final DeferredRegister<BlockEntityType<?>> TILE_ENTITIES = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, InterfaceLoader.MODID);
-    protected static RegistryObject<BlockEntityType<BuilderTileEntity>> TE_TYPE;
+    protected static BlockEntityType<BuilderTileEntity> TE_TYPE;
     
     protected ATileEntityBase<?> tileEntity;
 
@@ -68,7 +67,7 @@ public class BuilderTileEntity extends BlockEntity {
     protected final List<IWrapperPlayer> playersRequestingData = new ArrayList<>();
 
     public BuilderTileEntity(BlockPos pos, BlockState state) {
-        this(TE_TYPE.get(), pos, state);
+        this(TE_TYPE, pos, state);
         //Blank constructor for MC.
     }
 

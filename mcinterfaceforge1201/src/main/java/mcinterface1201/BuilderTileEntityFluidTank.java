@@ -17,7 +17,6 @@ import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.IFluidTank;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
 
 import javax.annotation.Nonnull;
 
@@ -27,12 +26,12 @@ import javax.annotation.Nonnull;
  * @author don_bruce
  */
 public class BuilderTileEntityFluidTank extends BuilderTileEntity implements IFluidTank, IFluidHandler {
-    protected static RegistryObject<BlockEntityType<BuilderTileEntityFluidTank>> TE_TYPE2;
+    protected static BlockEntityType<BuilderTileEntityFluidTank> TE_TYPE2;
 
     private EntityFluidTank tank;
 
     public BuilderTileEntityFluidTank(BlockPos pos, BlockState state) {
-        super(TE_TYPE2.get(), pos, state);
+        super(TE_TYPE2, pos, state);
     }
 
     @Override
